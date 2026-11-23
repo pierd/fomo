@@ -5,7 +5,8 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { buildBracket, buildRanking, hashString, type Bracket, type Result } from "../../convex/lib/ranking";
-import { errorMessage, formatDate, formatMinutes, plural } from "../lib/format";
+import { useTranslation } from "react-i18next";
+import { errorMessage, formatDate, formatMinutes } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/Cover";
 
@@ -14,12 +15,14 @@ type TItem = Data["items"][number];
 type ItemId = Id<"items">;
 
 export function TournamentPage({ tournamentId }: { tournamentId: Id<"tournaments"> }) {
+  const { t } = useTranslation();
   const data = useQuery(api.tournaments.get, { tournamentId });
-  if (data === undefined) return <p className="text-muted">Loading…</p>;
+  if (data === undefined) return <p className="text-muted">{t("common.loading")}</p>;
   return <TournamentView data={data} />;
 }
 
 function TournamentView({ data }: { data: Data }) {
+  const { t } = useTranslation();
   const { tournament, items, comparisons } = data;
   const record = useMutation(api.tournaments.record);
   const undo = useMutation(api.tournaments.undo);
@@ -79,14 +82,14 @@ function TournamentView({ data }: { data: Data }) {
     <div className="space-y-6">
       <div>
         <a href="#/tournaments" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-          <ArrowLeft size={14} /> Tournaments
+          <ArrowLeft size={14} /> {t("nav.tournaments")}
         </a>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
           <h1 className="text-2xl font-bold">{tournament.name}</h1>
           <span className="text-sm text-muted">
-            {plural(items.length, "item")} · {plural(asked, "answer")}
-            {tournament.importedCount > 0 && <> · {plural(tournament.importedCount, "imported result")}</>}
-            {tournament.conflictCount > 0 && <> · {plural(tournament.conflictCount, "conflict")} skipped</>}
+            {t("count.item", { count: items.length })} · {t("count.answer", { count: asked })}
+            {tournament.importedCount > 0 && <> · {t("count.importedResult", { count: tournament.importedCount })}</>}
+            {tournament.conflictCount > 0 && <> · {t("tournaments.skippedConflicts", { count: tournament.conflictCount })}</>}
           </span>
         </div>
       </div>
@@ -96,9 +99,9 @@ function TournamentView({ data }: { data: Data }) {
           <div>
             <div className="mb-1 flex justify-between text-xs text-muted">
               <span>
-                {progress.ruledOut} of {progress.total} out of the running for the top 4
+                {t("play.ruledOut", { ruledOut: progress.ruledOut, total: progress.total })}
               </span>
-              <span>{plural(progress.open, "open question")}</span>
+              <span>{t("count.openQuestion", { count: progress.open })}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
               <div
@@ -109,7 +112,7 @@ function TournamentView({ data }: { data: Data }) {
               />
             </div>
           </div>
-          <p className="text-center text-sm text-muted">Which one would you rather do next?</p>
+          <p className="text-center text-sm text-muted">{t("play.question")}</p>
           <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 sm:gap-4">
             <Contender item={byId.get(pair[0])!} onPick={() => answer("a")} disabled={pending} hint="←" />
             <div className="flex flex-col items-center justify-center">
@@ -117,8 +120,8 @@ function TournamentView({ data }: { data: Data }) {
                 className="btn h-12 w-12 rounded-full p-0"
                 onClick={() => answer("draw")}
                 disabled={pending}
-                title="Can't decide: a draw (↓)"
-                aria-label="Draw"
+                title={t("play.drawHint")}
+                aria-label={t("play.draw")}
               >
                 <Equal size={20} />
               </button>
@@ -127,9 +130,9 @@ function TournamentView({ data }: { data: Data }) {
           </div>
           <div className="flex items-center justify-center gap-3 text-xs text-muted">
             <button className="btn btn-ghost text-xs" onClick={doUndo} disabled={!canUndo || pending}>
-              <Undo2 size={14} /> Undo
+              <Undo2 size={14} /> {t("play.undo")}
             </button>
-            <span className="hidden sm:inline">Keys: ← left · → right · ↓ draw · z undo</span>
+            <span className="hidden sm:inline">{t("play.keys")}</span>
           </div>
           {error && <p className="text-center text-sm text-red-600">{error}</p>}
         </div>
@@ -141,12 +144,12 @@ function TournamentView({ data }: { data: Data }) {
         <button
           className="btn btn-ghost text-sm text-red-600"
           onClick={() => {
-            if (confirm(`Delete the tournament “${tournament.name}”?`)) {
+            if (confirm(t("tournaments.confirmDelete", { name: tournament.name }))) {
               void remove({ tournamentId: tournament._id }).then(() => navigate("/tournaments"));
             }
           }}
         >
-          <Trash2 size={14} /> Delete tournament
+          <Trash2 size={14} /> {t("tournaments.delete")}
         </button>
       </div>
     </div>
@@ -199,6 +202,7 @@ function Results({
   ranking: ReturnType<typeof buildRanking<ItemId>>;
   onUndo?: () => void;
 }) {
+  const { t } = useTranslation();
   const standings = ranking.standings();
   const winner = standings[0]?.itemId;
   const bracket = winner ? buildBracket<ItemId>(data.comparisons, winner) : null;
@@ -206,9 +210,9 @@ function Results({
     <div className="space-y-8">
       <div>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold">Final standing</h2>
+          <h2 className="text-lg font-semibold">{t("results.title")}</h2>
           {data.tournament.completedAt && (
-            <span className="text-xs text-muted">finished {formatDate(data.tournament.completedAt)}</span>
+            <span className="text-xs text-muted">{t("results.finishedOn", { date: formatDate(data.tournament.completedAt) })}</span>
           )}
         </div>
         <ol className="grid gap-2 sm:grid-cols-2">
@@ -231,7 +235,7 @@ function Results({
                 <div className="min-w-0">
                   <div className={`font-semibold ${i === 0 ? "text-lg" : ""}`}>{item.title}</div>
                   {item.creator && <div className="text-sm text-muted">{item.creator}</div>}
-                  {item.status !== "active" && <div className="text-xs text-muted">(already {item.status})</div>}
+                  {item.status !== "active" && <div className="text-xs text-muted">{t(`results.already.${item.status}`)}</div>}
                 </div>
               </li>
             );
@@ -239,14 +243,14 @@ function Results({
         </ol>
         {onUndo && (
           <button className="btn btn-ghost mt-2 text-xs" onClick={onUndo}>
-            <Undo2 size={14} /> Undo the last answer
+            <Undo2 size={14} /> {t("results.undoLast")}
           </button>
         )}
       </div>
 
       {bracket && bracket.kind === "match" && (
         <div>
-          <h2 className="mb-3 text-lg font-semibold">How the winner got there</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t("results.bracket")}</h2>
           <div className="card overflow-x-auto p-4">
             <BracketView node={bracket} byId={byId} />
           </div>
@@ -257,6 +261,7 @@ function Results({
 }
 
 function BracketEntry({ item, winner }: { item: TItem | undefined; winner: boolean }) {
+  const { t } = useTranslation();
   return (
     <div
       className={`w-40 truncate rounded-md border px-2 py-1 text-xs ${
@@ -264,7 +269,7 @@ function BracketEntry({ item, winner }: { item: TItem | undefined; winner: boole
       }`}
       title={item?.title}
     >
-      {item?.title ?? "(deleted)"}
+      {item?.title ?? t("common.deleted")}
     </div>
   );
 }

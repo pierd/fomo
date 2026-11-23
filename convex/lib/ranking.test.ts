@@ -93,5 +93,12 @@ describe("parseDuration", () => {
     expect(parseDuration("figure this out")).toEqual({ mode: "auto" });
     expect(parseDuration("")).toEqual({ mode: "unset" });
     expect(parseDuration("soon")).toBeNull();
+    expect(parseDuration("300 stron")).toMatchObject({ mode: "pages", pages: 300 });
+    expect(parseDuration("250 páginas")).toMatchObject({ mode: "pages", pages: 250 });
+    expect(parseDuration("2 godz. 30 min")).toEqual({ mode: "minutes", minutes: 150 });
+    expect(parseDuration("2 horas")).toEqual({ mode: "minutes", minutes: 120 });
+    expect(parseDuration("n/d")).toEqual({ mode: "na" });
+    expect(parseDuration("nie wiem")).toEqual({ mode: "auto" });
+    expect(parseDuration("no sé")).toEqual({ mode: "auto" });
   });
 });

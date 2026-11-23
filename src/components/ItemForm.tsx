@@ -2,10 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { Check, ExternalLink, ImagePlus, Lock, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
-import { durationToInput, formatMinutes, parseDuration } from "../../convex/lib/duration";
+import { useTranslation } from "react-i18next";
+import { durationToInput, parseDuration } from "../../convex/lib/duration";
 import type { Item, Tag } from "../lib/types";
 import type { Id } from "../../convex/_generated/dataModel";
-import { errorMessage } from "../lib/format";
+import { errorMessage, formatMinutes } from "../lib/format";
 import { Modal } from "./Modal";
 import { TagInput } from "./TagInput";
 import { Cover } from "./Cover";
@@ -16,13 +17,15 @@ type Props = {
   onClose: () => void;
 } & ({ mode: "add"; initialTags: string[] } | { mode: "edit"; item: Item });
 
-const DURATION_SHORTCUTS = [
-  { label: "N/A", value: "n/a" },
-  { label: "Pages…", value: "pages" },
-  { label: "Figure it out", value: "?" },
-];
 
 export function ItemForm(props: Props) {
+  const { t } = useTranslation();
+  const words = { pages: t("duration.pagesWord"), na: t("duration.naWord") };
+  const shortcuts = [
+    { label: t("form.shortcutNa"), value: words.na },
+    { label: t("form.shortcutPages"), value: "pages" },
+    { label: t("form.shortcutAuto"), value: "?" },
+  ];
   const item = props.mode === "edit" ? props.item : null;
   const tagById = useMemo(() => new Map(props.tags.map((t) => [t._id, t.name])), [props.tags]);
   const [title, setTitle] = useState(item?.title ?? "");
@@ -30,7 +33,7 @@ export function ItemForm(props: Props) {
   const [tagNames, setTagNames] = useState<string[]>(
     item ? item.tagIds.flatMap((id) => tagById.get(id) ?? []) : props.mode === "add" ? props.initialTags : [],
   );
-  const [duration, setDuration] = useState(item ? durationToInput(item) : "");
+  const [duration, setDuration] = useState(item ? durationToInput(item, words) : "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [sourceUrl, setSourceUrl] = useState(item?.sourceUrl ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -46,22 +49,22 @@ export function ItemForm(props: Props) {
   const setCover = useMutation(api.items.setCover);
   const uploadUrl = useMutation(api.items.generateUploadUrl);
 
-  const awaitingPages = /^\s*pages?\s*$/i.test(duration);
+  const awaitingPages = duration.trim() !== "" && duration.trim() === words.pages;
   const parsed = awaitingPages ? parseDuration("") : parseDuration(duration);
   const durationHint = awaitingPages
-    ? "Type the number of pages in front"
+    ? t("form.typePages")
     : parsed === null
-      ? "Try “2h 15m”, “320 pages”, “n/a” or “?”"
+      ? t("form.durationUnreadable")
       : parsed.mode === "minutes"
         ? formatMinutes(parsed.minutes)
         : parsed.mode === "pages"
-          ? `≈ ${formatMinutes(parsed.minutes)} at audiobook pace`
+          ? t("form.pagesEstimate", { time: formatMinutes(parsed.minutes) })
           : parsed.mode === "na"
-            ? "Not applicable"
+            ? t("form.notApplicable")
             : parsed.mode === "auto"
               ? props.aiEnabled
-                ? "AI will estimate it"
-                : "AI is locked: left unknown"
+                ? t("form.aiWillEstimate")
+                : t("form.aiLockedUnknown")
               : "";
 
   const run = async (fn: () => Promise<unknown>, close = true) => {
@@ -90,7 +93,7 @@ export function ItemForm(props: Props) {
     run(() => update({ itemId: item!._id, ...fields, sourceUrl: sourceUrl || undefined }));
 
   return (
-    <Modal title={item ? "Edit item" : "Add something"} onClose={props.onClose}>
+    <Modal title={item ? t("form.editTitle") : t("form.addTitle")} onClose={props.onClose}>
       <form
         className="space-y-4"
         onSubmit={(e) => {
@@ -108,7 +111,7 @@ export function ItemForm(props: Props) {
                 <button
                   type="button"
                   className="btn btn-ghost p-1"
-                  title="Upload a cover"
+                  title={t("form.uploadCover")}
                   onClick={() => fileRef.current?.click()}
                 >
                   <ImagePlus size={14} />
@@ -117,7 +120,7 @@ export function ItemForm(props: Props) {
                   <button
                     type="button"
                     className="btn btn-ghost p-1"
-                    title="Remove cover"
+                    title={t("form.removeCover")}
                     onClick={() => void run(() => setCover({ itemId: item._id, storageId: null }), false)}
                   >
                     <X size={14} />
@@ -145,26 +148,26 @@ export function ItemForm(props: Props) {
           <div className="flex-1 space-y-3">
             <div>
               <label className="label" htmlFor="item-title">
-                Name
+                {t("form.name")}
               </label>
               <input
                 id="item-title"
                 className="input text-base"
                 autoFocus
                 value={title}
-                placeholder="crime and punishment"
+                placeholder={t("form.namePlaceholder")}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div>
               <label className="label" htmlFor="item-creator">
-                By <span className="normal-case">(optional)</span>
+                {t("form.by")} <span className="normal-case">{t("common.optional")}</span>
               </label>
               <input
                 id="item-creator"
                 className="input"
                 value={creator}
-                placeholder="Author, director, studio…"
+                placeholder={t("form.byPlaceholder")}
                 onChange={(e) => setCreator(e.target.value)}
               />
             </div>
@@ -172,31 +175,31 @@ export function ItemForm(props: Props) {
         </div>
 
         <div>
-          <span className="label">Tags</span>
+          <span className="label">{t("form.tags")}</span>
           <TagInput value={tagNames} onChange={setTagNames} existing={props.tags.map((t) => t.name)} />
         </div>
 
         <div>
           <label className="label" htmlFor="item-duration">
-            Time to finish
+            {t("form.duration")}
           </label>
           <input
             id="item-duration"
             ref={durationRef}
             className={`input ${parsed === null ? "border-red-400" : ""}`}
             value={duration}
-            placeholder="2h 15m · 320 pages · n/a · ?"
+            placeholder={t("form.durationPlaceholder")}
             onChange={(e) => setDuration(e.target.value)}
           />
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {DURATION_SHORTCUTS.map((s) => (
+            {shortcuts.map((s) => (
               <button
                 key={s.label}
                 type="button"
                 className="chip hover:border-accent"
                 onClick={() => {
                   if (s.value === "pages") {
-                    setDuration(" pages");
+                    setDuration(` ${words.pages}`);
                     requestAnimationFrame(() => {
                       durationRef.current?.focus();
                       durationRef.current?.setSelectionRange(0, 0);
@@ -213,13 +216,13 @@ export function ItemForm(props: Props) {
 
         <div>
           <label className="label" htmlFor="item-description">
-            Notes
+            {t("form.notes")}
           </label>
           <textarea
             id="item-description"
             className="input min-h-20"
             value={description}
-            placeholder="Who recommended it, why you want it…"
+            placeholder={t("form.notesPlaceholder")}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
@@ -227,7 +230,8 @@ export function ItemForm(props: Props) {
         {item && (
           <div>
             <label className="label" htmlFor="item-source">
-              Link {item.source && <span className="normal-case">(imported from {item.source})</span>}
+              {t("form.link")}{" "}
+              {item.source && <span className="normal-case">{t("form.importedFrom", { source: item.source })}</span>}
             </label>
             <div className="flex gap-2">
               <input
@@ -238,7 +242,7 @@ export function ItemForm(props: Props) {
                 onChange={(e) => setSourceUrl(e.target.value)}
               />
               {sourceUrl && (
-                <a className="btn" href={sourceUrl} target="_blank" rel="noreferrer" title="Open">
+                <a className="btn" href={sourceUrl} target="_blank" rel="noreferrer" title={t("common.open")}>
                   <ExternalLink size={14} />
                 </a>
               )}
@@ -247,14 +251,14 @@ export function ItemForm(props: Props) {
         )}
 
         {item?.aiStatus === "failed" && (
-          <p className="text-sm text-red-600">AI clean-up failed: {item.aiError}</p>
+          <p className="text-sm text-red-600">{t("form.aiFailed")}</p>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {item ? (
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
             <button type="submit" className="btn btn-primary" disabled={busy || !title.trim() || parsed === null}>
-              Save
+              {t("common.save")}
             </button>
             <AiButton
               aiEnabled={props.aiEnabled}
@@ -264,7 +268,7 @@ export function ItemForm(props: Props) {
                 await cleanup({ itemId: item._id });
               })}
             >
-              {item.aiStatus === "pending" ? "Cleaning up…" : "Save & clean up"}
+              {item.aiStatus === "pending" ? t("form.cleaningUp") : t("form.saveAndCleanUp")}
             </AiButton>
             <div className="ml-auto flex gap-1">
               {item.status === "active" ? (
@@ -275,7 +279,7 @@ export function ItemForm(props: Props) {
                     disabled={busy}
                     onClick={() => void run(() => setStatus({ itemId: item._id, status: "done" }))}
                   >
-                    <Check size={14} /> Done
+                    <Check size={14} /> {t("item.done")}
                   </button>
                   <button
                     type="button"
@@ -283,7 +287,7 @@ export function ItemForm(props: Props) {
                     disabled={busy}
                     onClick={() => void run(() => setStatus({ itemId: item._id, status: "discarded" }))}
                   >
-                    <X size={14} /> Discard
+                    <X size={14} /> {t("item.discard")}
                   </button>
                 </>
               ) : (
@@ -293,16 +297,16 @@ export function ItemForm(props: Props) {
                   disabled={busy}
                   onClick={() => void run(() => setStatus({ itemId: item._id, status: "active" }))}
                 >
-                  <RotateCcw size={14} /> Back to list
+                  <RotateCcw size={14} /> {t("item.backToList")}
                 </button>
               )}
               <button
                 type="button"
                 className="btn text-red-600"
                 disabled={busy}
-                title="Delete for good"
+                title={t("form.deleteForGood")}
                 onClick={() => {
-                  if (confirm(`Delete “${item.title}” for good? Marking it done or discarded keeps it in your stats.`)) {
+                  if (confirm(t("form.confirmDelete", { title: item.title }))) {
                     void run(() => remove({ itemId: item._id }));
                   }
                 }}
@@ -319,13 +323,13 @@ export function ItemForm(props: Props) {
               disabled={busy || !title.trim() || parsed === null}
               onClick={() => void submitAdd(true)}
             >
-              Add & clean up
+              {t("form.addAndCleanUp")}
             </AiButton>
             <button type="submit" className="btn" disabled={busy || !title.trim() || parsed === null}>
-              Add
+              {t("form.add")}
             </button>
             <button type="button" className="btn btn-ghost ml-auto" onClick={props.onClose}>
-              Discard
+              {t("form.discard")}
             </button>
           </div>
         )}
@@ -347,13 +351,14 @@ function AiButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   if (!aiEnabled) {
     return (
       <button
         type="button"
         className="btn"
         disabled
-        title="AI features are locked for your account. Ask an admin to unlock them."
+        title={t("ai.lockedHint")}
       >
         <Lock size={14} /> {children}
       </button>

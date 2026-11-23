@@ -4,10 +4,12 @@ import { Swords, Trophy } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { Item, Tag } from "../lib/types";
-import { errorMessage, formatDate, plural } from "../lib/format";
+import { useTranslation } from "react-i18next";
+import { errorMessage, formatDate } from "../lib/format";
 import { navigate } from "../lib/router";
 
 export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] }) {
+  const { t } = useTranslation();
   const tournaments = useQuery(api.tournaments.list);
   const [creating, setCreating] = useState(false);
   const tagName = useMemo(() => new Map(tags.map((t) => [t._id, t.name])), [tags]);
@@ -16,12 +18,12 @@ export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] })
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tournaments</h1>
-          <p className="text-sm text-muted">Can't decide what's next? Let them fight it out, two at a time.</p>
+          <h1 className="text-2xl font-bold">{t("tournaments.title")}</h1>
+          <p className="text-sm text-muted">{t("tournaments.intro")}</p>
         </div>
         {!creating && (
           <button className="btn btn-primary px-4" onClick={() => setCreating(true)}>
-            <Swords size={16} /> New tournament
+            <Swords size={16} /> {t("tournaments.new")}
           </button>
         )}
       </div>
@@ -30,7 +32,7 @@ export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] })
         <NewTournament
           tags={tags}
           items={items}
-          past={(tournaments ?? []).map((t) => ({ _id: t._id, name: t.name, status: t.status }))}
+          past={(tournaments ?? []).map((x) => ({ _id: x._id, name: x.name, status: x.status }))}
           onCancel={() => setCreating(false)}
         />
       )}
@@ -38,31 +40,31 @@ export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] })
       {tournaments === undefined ? null : tournaments.length === 0 ? (
         !creating && (
           <div className="card px-6 py-12 text-center text-muted">
-            No tournaments yet. Start one to find out what you want to read or watch next.
+            {t("tournaments.empty")}
           </div>
         )
       ) : (
         <ul className="grid gap-2">
-          {tournaments.map((t) => (
-            <li key={t._id}>
-              <a href={`#/tournaments/${t._id}`} className="card block p-4 transition-colors hover:border-accent">
+          {tournaments.map((tour) => (
+            <li key={tour._id}>
+              <a href={`#/tournaments/${tour._id}`} className="card block p-4 transition-colors hover:border-accent">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <h3 className="font-semibold">{t.name}</h3>
+                  <h3 className="font-semibold">{tour.name}</h3>
                   <span className="text-xs text-muted">
-                    {formatDate(t._creationTime)} · {plural(t.participantCount, "item")}
-                    {t.tagIds.length > 0 && <> · {t.tagIds.map((id) => tagName.get(id) ?? "?").join(" + ")}</>}
+                    {formatDate(tour._creationTime)} · {t("count.item", { count: tour.participantCount })}
+                    {tour.tagIds.length > 0 && <> · {tour.tagIds.map((id) => tagName.get(id) ?? "?").join(" + ")}</>}
                   </span>
                   <span
                     className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
-                      t.status === "active" ? "bg-new-soft text-new" : "bg-accent-soft text-accent"
+                      tour.status === "active" ? "bg-new-soft text-new" : "bg-accent-soft text-accent"
                     }`}
                   >
-                    {t.status === "active" ? "In progress" : "Finished"}
+                    {tour.status === "active" ? t("tournaments.inProgress") : t("tournaments.finished")}
                   </span>
                 </div>
-                {t.top.length > 0 && (
+                {tour.top.length > 0 && (
                   <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    {t.top.map((s) => (
+                    {tour.top.map((s) => (
                       <li key={s.itemId} className="flex items-center gap-1">
                         {s.rank === 1 ? <Trophy size={14} className="text-amber-500" /> : <span className="text-muted">{s.rank}.</span>}
                         <span className={s.rank === 1 ? "font-medium" : ""}>{s.title}</span>
@@ -90,6 +92,7 @@ function NewTournament({
   past: { _id: Id<"tournaments">; name: string; status: string }[];
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [tagIds, setTagIds] = useState<Id<"tags">[]>([]);
   const [importFrom, setImportFrom] = useState<Id<"tournaments">[]>([]);
   const [name, setName] = useState("");
@@ -107,8 +110,8 @@ function NewTournament({
       for (const id of i.tagIds) counts.set(id, (counts.get(id) ?? 0) + 1);
     }
     return tags
-      .filter((t) => counts.has(t._id) || tagIds.includes(t._id))
-      .map((t) => ({ ...t, count: counts.get(t._id) ?? 0 }))
+      .filter((tag) => counts.has(tag._id) || tagIds.includes(tag._id))
+      .map((tag) => ({ ...tag, count: counts.get(tag._id) ?? 0 }))
       .sort((a, b) => b.count - a.count);
   }, [tags, items, tagIds]);
 
@@ -117,18 +120,16 @@ function NewTournament({
   return (
     <div className="card space-y-5 p-5">
       <div>
-        <span className="label">Who takes part</span>
-        <p className="mb-2 text-sm text-muted">
-          Unfinished items with all of these tags. Pick none to include everything.
-        </p>
+        <span className="label">{t("tournaments.whoTakesPart")}</span>
+        <p className="mb-2 text-sm text-muted">{t("tournaments.whoTakesPartHint")}</p>
         <div className="flex flex-wrap gap-1.5">
-          {usable.map((t) => (
+          {usable.map((tag) => (
             <button
-              key={t._id}
-              className={`chip ${tagIds.includes(t._id) ? "border-accent bg-accent-soft" : "hover:border-accent"}`}
-              onClick={() => setTagIds(toggle(tagIds, t._id))}
+              key={tag._id}
+              className={`chip ${tagIds.includes(tag._id) ? "border-accent bg-accent-soft" : "hover:border-accent"}`}
+              onClick={() => setTagIds(toggle(tagIds, tag._id))}
             >
-              {t.name} <span className="text-muted">{t.count}</span>
+              {tag.name} <span className="text-muted">{tag.count}</span>
             </button>
           ))}
         </div>
@@ -136,21 +137,19 @@ function NewTournament({
 
       {past.length > 0 && (
         <div>
-          <span className="label">Start from earlier results</span>
-          <p className="mb-2 text-sm text-muted">
-            Results from these tournaments count as already decided. Pairs they disagree on are ignored.
-          </p>
+          <span className="label">{t("tournaments.importLabel")}</span>
+          <p className="mb-2 text-sm text-muted">{t("tournaments.importHint")}</p>
           <div className="grid gap-1 sm:grid-cols-2">
-            {past.map((t) => (
-              <label key={t._id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-sunken">
+            {past.map((p) => (
+              <label key={p._id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-sunken">
                 <input
                   type="checkbox"
                   className="accent-accent"
-                  checked={importFrom.includes(t._id)}
-                  onChange={() => setImportFrom(toggle(importFrom, t._id))}
+                  checked={importFrom.includes(p._id)}
+                  onChange={() => setImportFrom(toggle(importFrom, p._id))}
                 />
-                <span className="truncate">{t.name}</span>
-                {t.status === "active" && <span className="text-xs text-muted">(in progress)</span>}
+                <span className="truncate">{p.name}</span>
+                {p.status === "active" && <span className="text-xs text-muted">{t("tournaments.inProgressParen")}</span>}
               </label>
             ))}
           </div>
@@ -159,33 +158,33 @@ function NewTournament({
 
       <div>
         <label className="label" htmlFor="t-name">
-          Name <span className="normal-case">(optional)</span>
+          {t("tournaments.name")} <span className="normal-case">{t("common.optional")}</span>
         </label>
         <input
           id="t-name"
           className="input"
           value={name}
-          placeholder="e.g. Next book for the holidays"
+          placeholder={t("tournaments.namePlaceholder")}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
       <div className="rounded-lg bg-sunken px-4 py-3 text-sm">
         {preview === undefined ? (
-          <span className="text-muted">Counting…</span>
+          <span className="text-muted">{t("tournaments.counting")}</span>
         ) : (
           <>
-            <strong>{plural(preview.participantCount, "item")}</strong> will take part.
+            {t("tournaments.willTakePart", { count: preview.participantCount })}
             {importFrom.length > 0 && (
               <>
                 {" "}
-                Imported <strong>{plural(preview.imported, "result")}</strong>
+                {t("tournaments.importedResults", { count: preview.imported })}
                 {preview.conflicts > 0 && (
                   <>
-                    , skipped <strong className="text-new">{plural(preview.conflicts, "conflict")}</strong>
+                    {" "}
+                    <span className="text-new">{t("tournaments.skippedConflicts", { count: preview.conflicts })}</span>
                   </>
                 )}
-                .
               </>
             )}
           </>
@@ -206,10 +205,10 @@ function NewTournament({
               .finally(() => setBusy(false));
           }}
         >
-          <Swords size={16} /> Start
+          <Swords size={16} /> {t("tournaments.start")}
         </button>
         <button className="btn btn-ghost" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>

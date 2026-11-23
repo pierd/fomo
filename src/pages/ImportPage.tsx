@@ -2,10 +2,22 @@ import { useMemo, useState } from "react";
 import { useAction, useMutation } from "convex/react";
 import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, FileUp, Loader2, Lock, Sparkles, Undo2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
-import { formatMinutes, parseDuration } from "../../convex/lib/duration";
-import { parseFile, parseText, SOURCES, titleKey, type Draft, type Source, type Status } from "../lib/importers";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { parseDuration } from "../../convex/lib/duration";
+import { currentLocale } from "../i18n";
+import {
+  ImportFormatError,
+  parseFile,
+  parseText,
+  SOURCES,
+  titleKey,
+  type Draft,
+  type Source,
+  type Status,
+} from "../lib/importers";
 import type { Item, Tag } from "../lib/types";
-import { errorMessage, plural } from "../lib/format";
+import { errorMessage, formatMinutes } from "../lib/format";
 import { navigate } from "../lib/router";
 import { TagInput } from "../components/TagInput";
 
@@ -14,6 +26,7 @@ type Row = Draft & { key: number; discarded: boolean; duplicate?: string; select
 const BATCH = 200;
 
 export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag[]; aiEnabled: boolean }) {
+  const { t } = useTranslation();
   const [source, setSource] = useState<Source | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
 
@@ -35,26 +48,22 @@ export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Ta
         aiEnabled={aiEnabled}
         tags={tags}
         onBack={() => setSource(null)}
-        onParsed={(drafts) => setRows(markDuplicates(drafts, items))}
+        onParsed={(drafts) => setRows(markDuplicates(drafts, items, t))}
       />
     );
   }
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Import</h1>
-        <p className="text-sm text-muted">
-          Bring over what you already track elsewhere. Nothing is added until you've reviewed it.
-        </p>
+        <h1 className="text-2xl font-bold">{t("import.title")}</h1>
+        <p className="text-sm text-muted">{t("import.intro")}</p>
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {SOURCES.map((s) => (
           <li key={s.id}>
             <button className="card w-full p-4 text-left transition-colors hover:border-accent" onClick={() => setSource(s)}>
-              <div className="font-semibold">{s.name}</div>
-              <div className="text-sm text-muted">
-                {s.accepts === "csv" ? "From its CSV export, no login needed" : "Paste a list or rough notes"}
-              </div>
+              <div className="font-semibold">{sourceName(s, t)}</div>
+              <div className="text-sm text-muted">{s.accepts === "csv" ? t("import.fromCsv") : t("import.fromText")}</div>
             </button>
           </li>
         ))}
@@ -63,7 +72,11 @@ export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Ta
   );
 }
 
-function markDuplicates(drafts: Draft[], items: Item[]): Row[] {
+function sourceName(s: Source, t: TFunction) {
+  return s.id === "text" ? t("import.textSource") : s.name;
+}
+
+function markDuplicates(drafts: Draft[], items: Item[], t: TFunction): Row[] {
   const existing = new Map<string, Item>();
   for (const i of items) existing.set(titleKey(i.title), i);
   const seen = new Set<string>();
@@ -74,9 +87,9 @@ function markDuplicates(drafts: Draft[], items: Item[]): Row[] {
     const sameWork = match && !(match.year && d.year && Math.abs(match.year - d.year) > 1);
     let duplicate: string | undefined;
     if (sameWork) {
-      duplicate = `Already in your list${match.status === "active" ? "" : ` (${match.status})`}`;
+      duplicate = t(`import.duplicate.${match.status}`);
     } else if (seen.has(k)) {
-      duplicate = "Appears earlier in this import";
+      duplicate = t("import.duplicate.inImport");
     }
     seen.add(k);
     return { ...d, key, discarded: duplicate !== undefined, duplicate, selected: false };
@@ -96,6 +109,7 @@ function SourceStep({
   onBack: () => void;
   onParsed: (drafts: Draft[]) => void;
 }) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [textTags, setTextTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -103,18 +117,18 @@ function SourceStep({
   const parseNotes = useAction(api.imports.parseNotes);
 
   const handle = (drafts: Draft[]) => {
-    if (drafts.length === 0) setError("Found nothing to import.");
+    if (drafts.length === 0) setError(t("import.nothingFound"));
     else onParsed(drafts);
   };
 
   return (
     <div className="space-y-4">
       <button className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onClick={onBack}>
-        <ArrowLeft size={14} /> Import
+        <ArrowLeft size={14} /> {t("import.title")}
       </button>
-      <h1 className="text-2xl font-bold">Import from {source.name}</h1>
+      <h1 className="text-2xl font-bold">{t("import.from", { source: sourceName(source, t) })}</h1>
       <ol className="card list-inside list-decimal space-y-1.5 p-5 text-sm">
-        {source.steps.map((s) => (
+        {(t(`import.steps.${source.id}`, { returnObjects: true }) as string[]).map((s) => (
           <li key={s}>{s}</li>
         ))}
       </ol>
@@ -122,8 +136,8 @@ function SourceStep({
       {source.accepts === "csv" ? (
         <label className="card flex cursor-pointer flex-col items-center gap-2 border-dashed p-8 text-center hover:border-accent">
           <FileUp size={24} className="text-muted" />
-          <span className="font-medium">Choose the CSV file</span>
-          <span className="text-xs text-muted">It's read in your browser.</span>
+          <span className="font-medium">{t("import.chooseFile")}</span>
+          <span className="text-xs text-muted">{t("import.readLocally")}</span>
           <input
             type="file"
             accept=".csv,text/csv"
@@ -133,9 +147,13 @@ function SourceStep({
               if (!file) return;
               setError(null);
               try {
-                handle(parseFile(source.id, await file.text(), file.name));
+                handle(parseFile(source.id, await file.text(), file.name, currentLocale()));
               } catch (err) {
-                setError(errorMessage(err));
+                setError(
+                  err instanceof ImportFormatError
+                    ? t("import.wrongFormat", { source: source.name })
+                    : t("import.unreadable"),
+                );
               }
               e.target.value = "";
             }}
@@ -145,17 +163,22 @@ function SourceStep({
         <div className="space-y-3">
           <textarea
             className="input min-h-56 font-mono text-sm"
-            placeholder={"Crime and Punishment by Fyodor Dostoevsky\n- Dune: Part Two\n- that podcast about the history of Rome Ana mentioned"}
+            placeholder={t("import.textPlaceholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
           <div>
-            <span className="label">Tag everything with</span>
-            <TagInput value={textTags} onChange={setTextTags} existing={tags.map((t) => t.name)} placeholder="Optional" />
+            <span className="label">{t("import.tagEverything")}</span>
+            <TagInput
+              value={textTags}
+              onChange={setTextTags}
+              existing={tags.map((tag) => tag.name)}
+              placeholder={t("import.optionalTags")}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="btn btn-primary" disabled={!text.trim() || busy} onClick={() => handle(parseText(text, textTags))}>
-              One item per line
+              {t("import.onePerLine")}
             </button>
             {aiEnabled ? (
               <button
@@ -178,11 +201,11 @@ function SourceStep({
                     .finally(() => setBusy(false));
                 }}
               >
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} Read with AI
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {t("import.readWithAi")}
               </button>
             ) : (
-              <button className="btn" disabled title="AI features are locked for your account. Ask an admin to unlock them.">
-                <Lock size={14} /> Read with AI
+              <button className="btn" disabled title={t("ai.lockedHint")}>
+                <Lock size={14} /> {t("import.readWithAi")}
               </button>
             )}
           </div>
@@ -206,6 +229,7 @@ function Review({
   aiEnabled: boolean;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const [rows, setRows] = useState(initial);
   const [bulkTags, setBulkTags] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -263,13 +287,13 @@ function Review({
   return (
     <div className="space-y-4">
       <button className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onClick={onBack}>
-        <ArrowLeft size={14} /> {source.name}
+        <ArrowLeft size={14} /> {sourceName(source, t)}
       </button>
       <div>
-        <h1 className="text-2xl font-bold">Review the import</h1>
+        <h1 className="text-2xl font-bold">{t("review.title")}</h1>
         <p className="text-sm text-muted">
-          {plural(kept.length, "item")} will be added
-          {dupes > 0 && <>; {plural(dupes, "duplicate")} set aside (undiscard them to add anyway)</>}.
+          {t("review.willBeAdded", { count: kept.length })}
+          {dupes > 0 && <> {t("review.duplicatesSetAside", { count: dupes })}</>}
         </p>
       </div>
 
@@ -286,15 +310,15 @@ function Review({
               }}
               onChange={(e) => setRows((rs) => rs.map((r) => ({ ...r, selected: e.target.checked })))}
             />
-            {selected.length ? `${selected.length} selected` : "Select"}
+            {selected.length ? t("review.selected", { count: selected.length }) : t("review.select")}
           </label>
           <span className="text-muted">·</span>
-          <span className="text-muted">{selected.length ? "For the selected:" : "For all:"}</span>
+          <span className="text-muted">{selected.length ? t("review.forSelected") : t("review.forAll")}</span>
           <button className="btn py-1 text-xs" onClick={() => patchTarget(() => ({ discarded: true }))}>
-            <X size={12} /> Discard
+            <X size={12} /> {t("review.discard")}
           </button>
           <button className="btn py-1 text-xs" onClick={() => patchTarget(() => ({ discarded: false }))}>
-            <Undo2 size={12} /> Undiscard
+            <Undo2 size={12} /> {t("review.undiscard")}
           </button>
           <select
             className="input w-auto py-1 text-xs"
@@ -303,44 +327,44 @@ function Review({
               const status = e.target.value as Status;
               if (status) patchTarget(() => ({ status }));
             }}
-            aria-label="Set status"
+            aria-label={t("review.setStatus")}
           >
-            <option value="">Set status…</option>
-            <option value="active">To do</option>
-            <option value="done">Done</option>
-            <option value="discarded">Discarded</option>
+            <option value="">{t("review.setStatus")}…</option>
+            <option value="active">{t("status.active")}</option>
+            <option value="done">{t("status.done")}</option>
+            <option value="discarded">{t("status.discarded")}</option>
           </select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-52 flex-1">
-            <TagInput value={bulkTags} onChange={setBulkTags} existing={existingTags} placeholder="Tags to add or remove…" />
+            <TagInput value={bulkTags} onChange={setBulkTags} existing={existingTags} placeholder={t("review.bulkTagsPlaceholder")} />
           </div>
           <button
             className="btn py-1.5 text-xs"
             disabled={!bulkTags.length}
             onClick={() => patchTarget((r) => ({ tagNames: [...new Set([...r.tagNames, ...bulkTags])] }))}
           >
-            Add tags
+            {t("review.addTags")}
           </button>
           <button
             className="btn py-1.5 text-xs"
             disabled={!bulkTags.length}
             onClick={() => patchTarget((r) => ({ tagNames: r.tagNames.filter((t) => !bulkTags.includes(t)) }))}
           >
-            Remove tags
+            {t("review.removeTags")}
           </button>
         </div>
         {allTagsInImport.length > 0 && (
           <div className="flex flex-wrap items-center gap-1 text-xs text-muted">
-            In this import:
-            {allTagsInImport.map((t) => (
+            {t("review.inThisImport")}
+            {allTagsInImport.map((tag) => (
               <button
-                key={t}
-                className={`chip ${existingTags.includes(t) ? "" : "border-dashed border-new bg-new-soft text-new"}`}
-                title={existingTags.includes(t) ? "Click to pick for bulk actions" : "New tag. Click to pick for bulk actions"}
-                onClick={() => setBulkTags((b) => (b.includes(t) ? b : [...b, t]))}
+                key={tag}
+                className={`chip ${existingTags.includes(tag) ? "" : "border-dashed border-new bg-new-soft text-new"}`}
+                title={existingTags.includes(tag) ? t("review.pickTag") : t("review.pickNewTag")}
+                onClick={() => setBulkTags((b) => (b.includes(tag) ? b : [...b, tag]))}
               >
-                {t}
+                {tag}
               </button>
             ))}
           </div>
@@ -363,7 +387,9 @@ function Review({
       <div className="card space-y-3 p-4">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="accent-accent" checked={fetchCovers} onChange={(e) => setFetchCovers(e.target.checked)} />
-          Download covers{source.id === "goodreads" || source.id === "letterboxd" ? ` from ${source.name}` : ""} in the background
+          {source.id === "goodreads" || source.id === "letterboxd"
+            ? t("review.coversFrom", { source: source.name })
+            : t("review.covers")}
         </label>
         <label className={`flex items-center gap-2 text-sm ${aiEnabled ? "" : "text-muted"}`}>
           <input
@@ -374,13 +400,14 @@ function Review({
             onChange={(e) => setEstimate(e.target.checked)}
           />
           {aiEnabled ? <Sparkles size={14} /> : <Lock size={14} />}
-          Let AI estimate the time to finish for {plural(missingTime, "item")} without one
-          {!aiEnabled && " (AI is locked for your account)"}
+          {t("review.estimate", { count: missingTime })}
+          {!aiEnabled && ` ${t("review.aiLocked")}`}
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex items-center gap-3">
           <button className="btn btn-primary px-4" disabled={kept.length === 0 || progress !== null} onClick={() => void run()}>
-            {progress ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Add {plural(kept.length, "item")}
+            {progress ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}{" "}
+            {t("review.add", { count: kept.length })}
           </button>
           {progress && (
             <span className="text-sm text-muted">
@@ -406,6 +433,7 @@ function ReviewRow({
   onToggle: () => void;
   onChange: (p: Partial<Row>) => void;
 }) {
+  const { t } = useTranslation();
   const [duration, setDuration] = useState(row.durationMinutes ? formatMinutes(row.durationMinutes) : "");
   return (
     <li className={row.discarded ? "bg-sunken" : ""}>
@@ -415,7 +443,7 @@ function ReviewRow({
           className="mt-1 accent-accent"
           checked={row.selected}
           onChange={(e) => onChange({ selected: e.target.checked })}
-          aria-label="Select"
+          aria-label={t("review.select")}
         />
         <button className="min-w-0 flex-1 text-left" onClick={onToggle}>
           <div className={`text-sm font-medium ${row.discarded ? "text-muted line-through" : ""}`}>
@@ -425,39 +453,39 @@ function ReviewRow({
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
             {row.duplicate && <span className="rounded bg-new-soft px-1.5 text-new">{row.duplicate}</span>}
-            {row.status !== "active" && <span className="rounded bg-sunken px-1.5">{row.status}</span>}
+            {row.status !== "active" && <span className="rounded bg-sunken px-1.5">{t(`status.${row.status}`)}</span>}
             {row.durationMinutes !== undefined && <span>{formatMinutes(row.durationMinutes)}</span>}
-            {row.tagNames.map((t) => (
-              <span key={t} className={existingTags.includes(t) ? "chip" : "chip border-dashed border-new bg-new-soft text-new"}>
-                {t}
+            {row.tagNames.map((tag) => (
+              <span key={tag} className={existingTags.includes(tag) ? "chip" : "chip border-dashed border-new bg-new-soft text-new"}>
+                {tag}
               </span>
             ))}
           </div>
         </button>
         {row.sourceUrl && (
-          <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost p-1.5" title="Open source">
+          <a href={row.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-ghost p-1.5" title={t("common.open")}>
             <ExternalLink size={14} />
           </a>
         )}
-        <button className="btn btn-ghost p-1.5" onClick={onToggle} aria-label="Edit">
+        <button className="btn btn-ghost p-1.5" onClick={onToggle} aria-label={t("item.edit")}>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         <button
           className="btn py-1 text-xs"
           onClick={() => onChange({ discarded: !row.discarded })}
-          title={row.discarded ? "Add it after all" : "Don't add it"}
+          title={row.discarded ? t("review.addAfterAll") : t("review.dontAdd")}
         >
-          {row.discarded ? "Undiscard" : "Discard"}
+          {row.discarded ? t("review.undiscard") : t("review.discard")}
         </button>
       </div>
       {expanded && (
         <div className="grid gap-3 border-t border-line px-10 py-3 sm:grid-cols-2">
           <div>
-            <span className="label">Name</span>
+            <span className="label">{t("form.name")}</span>
             <input className="input" value={row.title} onChange={(e) => onChange({ title: e.target.value })} />
           </div>
           <div>
-            <span className="label">By</span>
+            <span className="label">{t("form.by")}</span>
             <input
               className="input"
               value={row.creator ?? ""}
@@ -465,15 +493,15 @@ function ReviewRow({
             />
           </div>
           <div className="sm:col-span-2">
-            <span className="label">Tags</span>
+            <span className="label">{t("form.tags")}</span>
             <TagInput value={row.tagNames} onChange={(tagNames) => onChange({ tagNames })} existing={existingTags} />
           </div>
           <div>
-            <span className="label">Time to finish</span>
+            <span className="label">{t("form.duration")}</span>
             <input
               className="input"
               value={duration}
-              placeholder="2h 15m · 320 pages"
+              placeholder={t("form.durationPlaceholder")}
               onChange={(e) => {
                 setDuration(e.target.value);
                 const d = parseDuration(e.target.value);
@@ -484,15 +512,15 @@ function ReviewRow({
             />
           </div>
           <div>
-            <span className="label">Status</span>
+            <span className="label">{t("review.status")}</span>
             <select className="input" value={row.status} onChange={(e) => onChange({ status: e.target.value as Status })}>
-              <option value="active">To do</option>
-              <option value="done">Done</option>
-              <option value="discarded">Discarded</option>
+              <option value="active">{t("status.active")}</option>
+              <option value="done">{t("status.done")}</option>
+              <option value="discarded">{t("status.discarded")}</option>
             </select>
           </div>
           <div className="sm:col-span-2">
-            <span className="label">Notes</span>
+            <span className="label">{t("form.notes")}</span>
             <textarea
               className="input"
               value={row.description ?? ""}

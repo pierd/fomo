@@ -3,6 +3,7 @@ import { convexGateway } from "@convex-dev/ai-sdk-provider";
 import { z } from "zod";
 import { internalAction, internalQuery } from "./_generated/server";
 import { downloadImage, findCoverUrl } from "./lib/covers";
+import { LANGUAGE_NAMES } from "./lib/locales";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -15,7 +16,9 @@ const cleanupSchema = z.object({
   kind: z.enum(["book", "movie", "series", "game", "podcast", "course", "other"]),
   title: z
     .string()
-    .describe("Canonical title, properly capitalized, as commonly published in English. Without the creator."),
+    .describe(
+      "Canonical title, properly capitalized, as commonly published in the user's language (the original title if there's no well-known translation). Without the creator.",
+    ),
   creator: z
     .string()
     .optional()
@@ -46,7 +49,8 @@ export const cleanupItem = internalAction({
         system: `You tidy up entries in a personal list of things to read, watch, play or listen to.
 The user typed a rough name (maybe lowercase, misspelled, partial, or with the author/year mixed in). Identify the work they most likely mean and return clean metadata.
 If you can't tell what the work is, set recognized=false and return the title as given, just with tidy capitalization.
-Estimates are fine for durations; prefer well-known figures.`,
+Estimates are fine for durations; prefer well-known figures.
+The user's language is ${LANGUAGE_NAMES[item.locale]}: use the title under which the work is known in that language.`,
         prompt: `Entry: ${JSON.stringify(item.title)}${item.creator ? `\nCreator given: ${JSON.stringify(item.creator)}` : ""}
 Tags already on it: ${item.tagNames.join(", ") || "(none)"}${item.description ? `\nNotes: ${JSON.stringify(item.description.slice(0, 500))}` : ""}
 Existing tags to choose from: ${allTags.map((t) => t.name).join(", ")}`,

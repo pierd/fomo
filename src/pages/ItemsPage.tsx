@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import { Plus, Search, Tag as TagIcon, X } from "lucide-react";
 import type { Item, Status, Tag } from "../lib/types";
-import { formatMinutes, plural } from "../lib/format";
+import { useTranslation } from "react-i18next";
+import { formatMinutes } from "../lib/format";
 import { ItemCard } from "../components/ItemCard";
 import { ItemForm } from "../components/ItemForm";
 import { usePersistentState } from "../lib/usePersistentState";
@@ -10,14 +11,10 @@ import { usePersistentState } from "../lib/usePersistentState";
 type StatusFilter = Status | "all";
 type SortKey = "added" | "finished";
 
-const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-  { value: "active", label: "To do" },
-  { value: "done", label: "Done" },
-  { value: "discarded", label: "Discarded" },
-  { value: "all", label: "All" },
-];
+const STATUS_TABS: StatusFilter[] = ["active", "done", "discarded", "all"];
 
 export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag[]; aiEnabled: boolean }) {
+  const { t } = useTranslation();
   const [status, setStatus] = usePersistentState<StatusFilter>("fomo.status", "active");
   const [selectedTags, setSelectedTags] = usePersistentState<string[]>("fomo.tags", []);
   const [sort, setSort] = usePersistentState<SortKey>("fomo.sort", "added");
@@ -25,17 +22,17 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [form, setForm] = useState<{ mode: "add" } | { mode: "edit"; itemId: Item["_id"] } | null>(null);
 
-  const tagName = useMemo(() => new Map(tags.map((t) => [t._id, t.name])), [tags]);
+  const tagName = useMemo(() => new Map(tags.map((tag) => [tag._id, tag.name])), [tags]);
   const namesOf = (item: Item) => item.tagIds.flatMap((id) => tagName.get(id) ?? []);
   // Drop selections of tags that were renamed or no longer exist.
-  const activeTags = selectedTags.filter((t) => tags.some((x) => x.name === t));
+  const activeTags = selectedTags.filter((tag) => tags.some((x) => x.name === tag));
   const effectiveSort: SortKey = status === "active" ? "added" : sort;
 
   const filtered = useMemo(() => {
     const out = items.filter(
       (i) =>
         (status === "all" || i.status === status) &&
-        activeTags.every((t) => i.tagIds.some((id) => tagName.get(id) === t)),
+        activeTags.every((tag) => i.tagIds.some((id) => tagName.get(id) === tag)),
     );
     if (effectiveSort === "finished") {
       out.sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0));
@@ -67,8 +64,8 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
   const totalMinutes = shown.reduce((sum, i) => sum + (i.durationMode !== "na" ? (i.durationMinutes ?? 0) : 0), 0);
   const unknown = shown.filter((i) => i.durationMinutes === undefined && i.durationMode !== "na").length;
 
-  const toggleTag = (t: string) =>
-    setSelectedTags(activeTags.includes(t) ? activeTags.filter((x) => x !== t) : [...activeTags, t]);
+  const toggleTag = (tag: string) =>
+    setSelectedTags(activeTags.includes(tag) ? activeTags.filter((x) => x !== tag) : [...activeTags, tag]);
 
   const editing = form?.mode === "edit" ? items.find((i) => i._id === form.itemId) : undefined;
 
@@ -91,13 +88,13 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
         <div className="flex rounded-lg border border-line bg-surface p-0.5">
           {STATUS_TABS.map((tab) => (
             <button
-              key={tab.value}
+              key={tab}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                status === tab.value ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
+                status === tab ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
               }`}
-              onClick={() => setStatus(tab.value)}
+              onClick={() => setStatus(tab)}
             >
-              {tab.label}
+              {t(`status.${tab}`)}
             </button>
           ))}
         </div>
@@ -106,25 +103,25 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
             className="input w-auto py-1.5"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            aria-label="Sort by"
+            aria-label={t("list.sortBy")}
           >
-            <option value="added">Newest added</option>
-            <option value="finished">Recently finished</option>
+            <option value="added">{t("list.sortAdded")}</option>
+            <option value="finished">{t("list.sortFinished")}</option>
           </select>
         )}
         <button className="btn btn-primary ml-auto px-4" onClick={() => setForm({ mode: "add" })}>
-          <Plus size={16} /> Add
+          <Plus size={16} /> {t("list.add")}
         </button>
       </div>
 
       {/* Search, scoped to the selected tags. */}
       <div className="card mb-2 flex flex-wrap items-center gap-1.5 px-3 py-2 focus-within:border-accent">
         <Search size={16} className="text-muted" />
-        {activeTags.length > 0 && <span className="text-xs text-muted">in</span>}
-        {activeTags.map((t) => (
-          <span key={t} className="chip border-accent bg-accent-soft">
-            <TagIcon size={11} /> {t}
-            <button onClick={() => toggleTag(t)} aria-label={`Stop filtering by ${t}`} className="opacity-60 hover:opacity-100">
+        {activeTags.length > 0 && <span className="text-xs text-muted">{t("list.searchIn")}</span>}
+        {activeTags.map((tag) => (
+          <span key={tag} className="chip border-accent bg-accent-soft">
+            <TagIcon size={11} /> {tag}
+            <button onClick={() => toggleTag(tag)} aria-label={t("list.stopFiltering", { tag: tag })} className="opacity-60 hover:opacity-100">
               <X size={12} />
             </button>
           </span>
@@ -133,14 +130,14 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
           className="min-w-40 flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-muted"
           placeholder={
             activeTags.length
-              ? `Search ${plural(filtered.length, "item")} tagged ${activeTags.join(" + ")}…`
-              : `Search ${plural(filtered.length, "item")}…`
+              ? t("list.searchTagged", { count: filtered.length, tags: activeTags.join(" + ") })
+              : t("list.search", { count: filtered.length })
           }
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         {search && (
-          <button className="text-muted hover:text-ink" onClick={() => setSearch("")} aria-label="Clear search">
+          <button className="text-muted hover:text-ink" onClick={() => setSearch("")} aria-label={t("list.clearSearch")}>
             <X size={14} />
           </button>
         )}
@@ -148,33 +145,33 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
           className={`chip ${tagPickerOpen ? "border-accent" : ""}`}
           onClick={() => setTagPickerOpen((o) => !o)}
         >
-          <TagIcon size={11} /> Tags
+          <TagIcon size={11} /> {t("list.tags")}
         </button>
       </div>
       {tagPickerOpen && (
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {tagCounts.length === 0 && <span className="text-sm text-muted">No tags in this view.</span>}
-          {tagCounts.map(([t, n]) => (
+          {tagCounts.length === 0 && <span className="text-sm text-muted">{t("list.noTags")}</span>}
+          {tagCounts.map(([tag, n]) => (
             <button
-              key={t}
-              className={`chip ${activeTags.includes(t) ? "border-accent bg-accent-soft" : "hover:border-accent"}`}
-              onClick={() => toggleTag(t)}
+              key={tag}
+              className={`chip ${activeTags.includes(tag) ? "border-accent bg-accent-soft" : "hover:border-accent"}`}
+              onClick={() => toggleTag(tag)}
             >
-              {t} <span className="text-muted">{n}</span>
+              {tag} <span className="text-muted">{n}</span>
             </button>
           ))}
           {activeTags.length > 0 && (
             <button className="text-xs text-muted underline" onClick={() => setSelectedTags([])}>
-              clear
+              {t("list.clearTags")}
             </button>
           )}
         </div>
       )}
 
       <p className="mb-3 text-sm text-muted">
-        {plural(shown.length, "item")}
-        {totalMinutes > 0 && <> · {formatMinutes(totalMinutes)} in total</>}
-        {unknown > 0 && totalMinutes > 0 && <> (+{unknown} without a time)</>}
+        {t("count.item", { count: shown.length })}
+        {totalMinutes > 0 && <> · {t("list.inTotal", { time: formatMinutes(totalMinutes) })}</>}
+        {unknown > 0 && totalMinutes > 0 && <> {t("list.withoutTime", { count: unknown })}</>}
       </p>
 
       {shown.length === 0 ? (
@@ -215,18 +212,19 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
 }
 
 function EmptyState({ hasAny, filtered, onAdd }: { hasAny: boolean; filtered: boolean; onAdd: () => void }) {
-  if (filtered) return <p className="py-12 text-center text-muted">Nothing matches.</p>;
-  if (hasAny) return <p className="py-12 text-center text-muted">Nothing here.</p>;
+  const { t } = useTranslation();
+  if (filtered) return <p className="py-12 text-center text-muted">{t("list.nothingMatches")}</p>;
+  if (hasAny) return <p className="py-12 text-center text-muted">{t("list.nothingHere")}</p>;
   return (
     <div className="card px-6 py-12 text-center">
-      <p className="text-lg font-semibold">Your list is empty</p>
-      <p className="mt-1 text-sm text-muted">Add the books, movies and games you don't want to miss.</p>
+      <p className="text-lg font-semibold">{t("list.emptyTitle")}</p>
+      <p className="mt-1 text-sm text-muted">{t("list.emptyText")}</p>
       <div className="mt-4 flex justify-center gap-2">
         <button className="btn btn-primary" onClick={onAdd}>
-          <Plus size={16} /> Add the first one
+          <Plus size={16} /> {t("list.addFirst")}
         </button>
         <a className="btn" href="#/import">
-          Import a list
+          {t("list.importList")}
         </a>
       </div>
     </div>

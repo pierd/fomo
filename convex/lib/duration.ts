@@ -16,20 +16,26 @@ export function minutesFromPages(pages: number) {
 }
 
 // Accepts "2h 30m", "2:30", "142 min", "142", "1.5h", "320 pages", "320p",
-// "n/a", "?" / "figure this out" / "auto". Returns null if unreadable.
+// "n/a", "?" / "figure this out" / "auto", and the same in Spanish and Polish
+// ("2 horas", "300 páginas", "2 godz. 30 min", "300 stron", "n/d", "no sé",
+// "nie wiem"). Returns null if unreadable.
 export function parseDuration(raw: string): DurationInput | null {
   const s = raw.trim().toLowerCase();
   if (s === "") return { mode: "unset" };
-  if (/^(n\/?a|none|-)$/.test(s)) return { mode: "na" };
-  if (/^(\?|auto|figure.*|ai|dunno|unknown)$/.test(s)) return { mode: "auto" };
-  const pages = s.match(/^(\d+)\s*(p|pp|pg|pgs|page|pages)\.?$/);
+  if (/^(n\/?a|n\/?d|none|nada|brak|nie dotyczy|no aplica|-)$/.test(s)) return { mode: "na" };
+  if (/^(\?|auto|figure.*|ai|ia|dunno|unknown|no s[eé].*|nie wiem.*|ustal.*|averígualo|calcula.*)$/.test(s)) {
+    return { mode: "auto" };
+  }
+  const pages = s.match(/^(\d+)\s*(p|pp|pg|pgs|pages?|str|stron[ay]?|strony|pág|págs|páginas?|paginas?)\.?$/);
   if (pages) {
     const n = Number(pages[1]);
     return { mode: "pages", pages: n, minutes: minutesFromPages(n) };
   }
   const clock = s.match(/^(\d+):(\d{1,2})$/);
   if (clock) return { mode: "minutes", minutes: Number(clock[1]) * 60 + Number(clock[2]) };
-  const hm = s.match(/^(?:(\d+(?:[.,]\d+)?)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?|s)?)?)?$/);
+  const hm = s.match(
+    /^(?:(\d+(?:[.,]\d+)?)\s*(?:h|hrs?|hours?|horas?|godz|godzin[ay]?|godzina)\.?)?\s*(?:(\d+)\s*(?:m|mins?|minutes?|minutos?|minut[ay]?)\.?)?$/,
+  );
   if (hm && (hm[1] || hm[2])) {
     const h = hm[1] ? Number(hm[1].replace(",", ".")) : 0;
     const m = hm[2] ? Number(hm[2]) : 0;
@@ -39,28 +45,22 @@ export function parseDuration(raw: string): DurationInput | null {
   return null;
 }
 
-export function formatMinutes(minutes: number) {
-  if (minutes < 60) return `${Math.round(minutes)}m`;
-  const totalHours = minutes / 60;
-  if (totalHours < 48) {
-    const h = Math.floor(totalHours);
-    const m = Math.round(minutes - h * 60);
-    return m ? `${h}h ${m}m` : `${h}h`;
-  }
-  const days = totalHours / 24;
-  if (days < 60) return `${Math.round(days)}d`;
-  return `${(days / 30.4).toFixed(1)}mo`;
-}
+// Text to put back into the input when editing an item, using words the
+// parser understands in the current language.
+export type DurationWords = { pages: string; na: string };
+const EN_WORDS: DurationWords = { pages: "pages", na: "n/a" };
 
-// Text to put back into the input when editing an item.
-export function durationToInput(item: {
-  durationMode: string;
-  durationMinutes?: number;
-  pages?: number;
-}): string {
+export function durationToInput(
+  item: {
+    durationMode: string;
+    durationMinutes?: number;
+    pages?: number;
+  },
+  words: DurationWords = EN_WORDS,
+): string {
   switch (item.durationMode) {
     case "pages":
-      return item.pages ? `${item.pages} pages` : "";
+      return item.pages ? `${item.pages} ${words.pages}` : "";
     case "minutes": {
       if (item.durationMinutes === undefined) return "";
       const h = Math.floor(item.durationMinutes / 60);
@@ -68,9 +68,11 @@ export function durationToInput(item: {
       return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
     }
     case "na":
-      return "n/a";
+      return words.na;
     case "auto":
-      return item.durationMinutes ? durationToInput({ durationMode: "minutes", durationMinutes: item.durationMinutes }) : "?";
+      return item.durationMinutes
+        ? durationToInput({ durationMode: "minutes", durationMinutes: item.durationMinutes }, words)
+        : "?";
     default:
       return "";
   }

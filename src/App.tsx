@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { BarChart3, List, LogOut, Shield, Swords, Upload } from "lucide-react";
 import { api } from "../convex/_generated/api";
@@ -12,12 +13,15 @@ import { TournamentPage } from "./pages/TournamentPage";
 import { ImportPage } from "./pages/ImportPage";
 import { StatsPage } from "./pages/StatsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { LocalePicker } from "./i18n/LocalePicker";
+import { currentLocale } from "./i18n";
 
 export function App() {
+  const { t } = useTranslation();
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>
+        <div className="flex min-h-screen items-center justify-center text-muted">{t("common.loading")}</div>
       </AuthLoading>
       <Unauthenticated>
         <SignIn />
@@ -35,15 +39,21 @@ function Main() {
   const items = useQuery(api.items.list);
   const tags = useQuery(api.tags.list);
   const { signOut } = useAuthActions();
+  const { t } = useTranslation();
+  const setLocale = useMutation(api.admin.setLocale);
+  // Keep the account's language (used for AI answers) in step with the UI.
+  useEffect(() => {
+    if (me && me.locale !== currentLocale()) void setLocale({ locale: currentLocale() });
+  }, [me, setLocale]);
   // Stats compare against "now"; fixed per visit so the page is stable.
   const [now] = useState(() => Date.now());
 
   const nav = [
-    { path: "", label: "List", icon: List },
-    { path: "tournaments", label: "Tournaments", icon: Swords },
-    { path: "import", label: "Import", icon: Upload },
-    { path: "stats", label: "Stats", icon: BarChart3 },
-    ...(me?.isAdmin ? [{ path: "admin", label: "Admin", icon: Shield }] : []),
+    { path: "", label: t("nav.list"), icon: List },
+    { path: "tournaments", label: t("nav.tournaments"), icon: Swords },
+    { path: "import", label: t("nav.import"), icon: Upload },
+    { path: "stats", label: t("nav.stats"), icon: BarChart3 },
+    ...(me?.isAdmin ? [{ path: "admin", label: t("nav.admin"), icon: Shield }] : []),
   ];
   const section = route[0] ?? "";
   const loaded = me !== undefined && items !== undefined && tags !== undefined;
@@ -70,14 +80,20 @@ function Main() {
         </nav>
         <div className="ml-auto flex items-center gap-2 text-sm text-muted">
           <span className="hidden truncate md:inline">{me?.email}</span>
-          <button className="btn btn-ghost p-1.5" onClick={() => void signOut()} title="Sign out" aria-label="Sign out">
+          <LocalePicker signedIn />
+          <button
+            className="btn btn-ghost p-1.5"
+            onClick={() => void signOut()}
+            title={t("nav.signOut")}
+            aria-label={t("nav.signOut")}
+          >
             <LogOut size={16} />
           </button>
         </div>
       </header>
       <main>
         {!loaded ? (
-          <p className="text-muted">Loading…</p>
+          <p className="text-muted">{t("common.loading")}</p>
         ) : section === "tournaments" && route[1] ? (
           <TournamentPage key={route[1]} tournamentId={route[1] as Id<"tournaments">} />
         ) : section === "tournaments" ? (

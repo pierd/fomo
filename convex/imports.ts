@@ -1,4 +1,4 @@
-import { action, mutation } from "./_generated/server";
+import { action, internalQuery, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { generateText, Output } from "ai";
 import { convexGateway } from "@convex-dev/ai-sdk-provider";
@@ -9,6 +9,9 @@ import { ensureTags } from "./tags";
 import { CLEANUP_MODEL } from "./ai";
 import { statusValidator } from "./schema";
 import { canUseAi } from "./lib/auth";
+import { fail } from "./lib/errors";
+import { LANGUAGE_NAMES, toLocale } from "./lib/locales";
+import { kindTag } from "./lib/tags";
 
 export const MAX_BATCH = 200;
 
@@ -109,25 +112,21 @@ const notesSchema = z.object({
   ),
 });
 
-const KIND_TAG: Record<string, string> = {
-  book: "books",
-  movie: "movies",
-  series: "series",
-  game: "games",
-  podcast: "podcasts",
-};
 
 // Turns free-form notes into import rows (still reviewed before adding).
 export const parseNotes = action({
   args: { text: v.string() },
   handler: async (ctx, { text }) => {
-    await requireAiInAction(ctx);
-    if (text.length > 30000) throw new Error("Notes are too long; split them up (30k characters max)");
+    const userId = await requireAiInAction(ctx);
+    const locale = toLocale(await ctx.runQuery(internal.imports.userLocale, { userId }));
+    const language = LANGUAGE_NAMES[locale];
+    if (text.length > 30000) fail("notesTooLong", { max: 30000 });
     const { output } = await generateText({
       model: convexGateway(CLEANUP_MODEL),
       output: Output.object({ schema: notesSchema }),
       system: `You extract a reading/watching/playing list from someone's rough notes.
-Each thing they want to read, watch, play or listen to becomes one item. Identify the real work meant and clean up its title. Skip lines that aren't such works. Keep the order of the notes.`,
+Each thing they want to read, watch, play or listen to becomes one item. Identify the real work meant and clean up its title. Skip lines that aren't such works. Keep the order of the notes.
+The user's language is ${language}: use the title under which each work is known in ${language}, and write notes in ${language}.`,
       prompt: text,
     });
     return output.items.map((i) => ({
@@ -138,7 +137,12 @@ Each thing they want to read, watch, play or listen to becomes one item. Identif
       durationMinutes: i.durationMinutes,
       pages: i.pages,
       description: i.note,
-      tagNames: KIND_TAG[i.kind] ? [KIND_TAG[i.kind]] : [],
+      tagNames: [kindTag(i.kind, locale)].filter((t): t is string => t !== null),
     }));
   },
+});
+
+export const userLocale = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => (await ctx.db.get("users", userId))?.locale ?? null,
 });

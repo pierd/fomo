@@ -7,6 +7,7 @@ import { canUseAi, requireOwnItem, requireUserId } from "./lib/auth";
 import { parseDuration } from "./lib/duration";
 import { ensureTags } from "./tags";
 import { statusValidator } from "./schema";
+import { fail } from "./lib/errors";
 
 const MAX_ITEMS = 5000;
 
@@ -31,7 +32,7 @@ export const list = query({
 const durationFields = (raw: string | undefined) => {
   if (raw === undefined) return {};
   const d = parseDuration(raw);
-  if (d === null) throw new Error(`Can't read time to finish "${raw}"`);
+  if (d === null) fail("badDuration", { value: raw });
   switch (d.mode) {
     case "minutes":
       return { durationMode: d.mode, durationMinutes: d.minutes, pages: undefined };
@@ -54,9 +55,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const title = args.title.trim();
-    if (!title) throw new Error("Name can't be empty");
+    if (!title) fail("emptyName");
     const ai = await canUseAi(ctx, userId);
-    if (args.cleanup && !ai) throw new Error("AI features are locked for this account");
+    if (args.cleanup && !ai) fail("aiLocked");
     const duration = durationFields(args.duration);
     const itemId = await ctx.db.insert("items", {
       userId,
@@ -94,7 +95,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const item = await requireOwnItem(ctx, args.itemId);
     const title = args.title.trim();
-    if (!title) throw new Error("Name can't be empty");
+    if (!title) fail("emptyName");
     const duration = durationFields(args.duration);
     await ctx.db.patch("items", item._id, {
       title,
@@ -115,7 +116,7 @@ export const cleanup = mutation({
   args: { itemId: v.id("items") },
   handler: async (ctx, { itemId }) => {
     const item = await requireOwnItem(ctx, itemId);
-    if (!(await canUseAi(ctx, item.userId))) throw new Error("AI features are locked for this account");
+    if (!(await canUseAi(ctx, item.userId))) fail("aiLocked");
     await startCleanup(ctx, itemId, true);
     return null;
   },
@@ -175,7 +176,8 @@ export const getInternal = internalQuery({
     const item = await ctx.db.get("items", itemId);
     if (item === null) return null;
     const tags = await Promise.all(item.tagIds.map((id) => ctx.db.get("tags", id)));
-    return { ...item, tagNames: tags.flatMap((t) => (t ? [t.name] : [])) };
+    const user = await ctx.db.get("users", item.userId);
+    return { ...item, tagNames: tags.flatMap((t) => (t ? [t.name] : [])), locale: user?.locale ?? "en" };
   },
 });
 

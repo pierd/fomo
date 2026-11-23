@@ -1,6 +1,12 @@
 import Papa from "papaparse";
 import { minutesFromPages } from "../../convex/lib/duration";
 import { normalizeTag } from "./tags";
+import { KIND_TAGS, type Kind } from "../../convex/lib/tags";
+import type { Locale } from "../../convex/lib/locales";
+
+// Thrown for a file that isn't the expected export; the message is a
+// translation key.
+export class ImportFormatError extends Error {}
 
 export type Status = "active" | "done" | "discarded";
 
@@ -28,62 +34,15 @@ export type Source = {
   id: SourceId;
   name: string;
   accepts: "csv" | "text";
-  steps: string[];
 };
 
+// Step-by-step instructions live in the translations: import.steps.<id>.
 export const SOURCES: Source[] = [
-  {
-    id: "goodreads",
-    name: "Goodreads",
-    accepts: "csv",
-    steps: [
-      "On goodreads.com, open My Books.",
-      "In the left sidebar under Tools, click Import and export (or go to goodreads.com/review/import).",
-      "Click Export Library and wait until a link to the file appears (it can take a minute; refresh the page).",
-      "Download goodreads_library_export.csv and choose it below.",
-    ],
-  },
-  {
-    id: "storygraph",
-    name: "StoryGraph",
-    accepts: "csv",
-    steps: [
-      "On app.thestorygraph.com, open your profile menu and go to Manage Account.",
-      "Scroll to Manage Your Data and click Export StoryGraph Library.",
-      "Click Generate export, then download the CSV when it's ready.",
-      "Choose the file below.",
-    ],
-  },
-  {
-    id: "letterboxd",
-    name: "Letterboxd",
-    accepts: "csv",
-    steps: [
-      "On letterboxd.com, go to Settings → Data and click Export your data.",
-      "Unzip the downloaded file.",
-      "Choose watchlist.csv below (films you want to see). You can also import watched.csv: those films are added as done.",
-    ],
-  },
-  {
-    id: "imdb",
-    name: "IMDb",
-    accepts: "csv",
-    steps: [
-      "On imdb.com, open your Watchlist (or Your Ratings).",
-      "Click the ⋯ menu (or the share icon) next to the list title and choose Export.",
-      "Open Exports from your account menu and download the CSV when it's ready.",
-      "Choose the file below. Rated titles are added as done.",
-    ],
-  },
-  {
-    id: "text",
-    name: "List or notes",
-    accepts: "text",
-    steps: [
-      "Paste a list, one item per line. “Title by Author” and “Title - Author” are understood; bullets and numbers are stripped.",
-      "Got messy notes instead? Use “Read with AI” to pick out what's in them.",
-    ],
-  },
+  { id: "goodreads", name: "Goodreads", accepts: "csv" },
+  { id: "storygraph", name: "StoryGraph", accepts: "csv" },
+  { id: "letterboxd", name: "Letterboxd", accepts: "csv" },
+  { id: "imdb", name: "IMDb", accepts: "csv" },
+  { id: "text", name: "", accepts: "text" },
 ];
 
 function parseCsv(text: string) {
@@ -116,10 +75,10 @@ function isbn(s: string | undefined) {
 
 const GOODREADS_BUILTIN = new Set(["to-read", "read", "currently-reading"]);
 
-export function parseGoodreads(text: string): Draft[] {
+export function parseGoodreads(text: string, locale: Locale): Draft[] {
   const { rows, fields } = parseCsv(text);
   if (!fields.includes("Book Id") || !fields.includes("Exclusive Shelf")) {
-    throw new Error("This doesn't look like a Goodreads export (no “Book Id” / “Exclusive Shelf” columns).");
+    throw new ImportFormatError("goodreads");
   }
   return rows.map((r) => {
     const shelf = r["Exclusive Shelf"]?.trim();
@@ -134,7 +93,7 @@ export function parseGoodreads(text: string): Draft[] {
       title: r["Title"]?.trim() ?? "",
       creator: r["Author"]?.trim() || undefined,
       year: num(r["Original Publication Year"]) ?? num(r["Year Published"]),
-      tagNames: ["books", ...shelves],
+      tagNames: [KIND_TAGS.book[locale], ...shelves],
       description: r["Private Notes"]?.trim() || undefined,
       pages,
       durationMinutes: pages ? minutesFromPages(pages) : undefined,
@@ -149,10 +108,10 @@ export function parseGoodreads(text: string): Draft[] {
   });
 }
 
-export function parseStoryGraph(text: string): Draft[] {
+export function parseStoryGraph(text: string, locale: Locale): Draft[] {
   const { rows, fields } = parseCsv(text);
   if (!fields.includes("Read Status") || !fields.includes("Title")) {
-    throw new Error("This doesn't look like a StoryGraph export (no “Title” / “Read Status” columns).");
+    throw new ImportFormatError("storygraph");
   }
   return rows.map((r) => {
     const status = r["Read Status"]?.trim();
@@ -167,7 +126,7 @@ export function parseStoryGraph(text: string): Draft[] {
     return {
       title: r["Title"]?.trim() ?? "",
       creator: r["Authors"]?.split(",")[0]?.trim() || undefined,
-      tagNames: [format === "audio" ? "audiobooks" : "books", ...tags],
+      tagNames: [KIND_TAGS[format === "audio" ? "audiobook" : "book"][locale], ...tags],
       status: done ? "done" : dnf ? "discarded" : "active",
       addedAt,
       finishedAt: done || dnf ? (date(r["Last Date Read"]) ?? addedAt) : undefined,
@@ -178,10 +137,10 @@ export function parseStoryGraph(text: string): Draft[] {
   });
 }
 
-export function parseLetterboxd(text: string, fileName: string): Draft[] {
+export function parseLetterboxd(text: string, fileName: string, locale: Locale): Draft[] {
   const { rows, fields } = parseCsv(text);
   if (!fields.includes("Letterboxd URI") || !fields.includes("Name")) {
-    throw new Error("This doesn't look like a Letterboxd export (no “Name” / “Letterboxd URI” columns).");
+    throw new ImportFormatError("letterboxd");
   }
   const watched = /watched|diary|ratings|reviews/i.test(fileName);
   return rows.map((r) => {
@@ -189,7 +148,7 @@ export function parseLetterboxd(text: string, fileName: string): Draft[] {
     return {
       title: r["Name"]?.trim() ?? "",
       year: num(r["Year"]),
-      tagNames: ["movies"],
+      tagNames: [KIND_TAGS.movie[locale]],
       status: watched ? "done" : "active",
       addedAt: date(r["Date"]),
       finishedAt: watched ? at : undefined,
@@ -200,26 +159,26 @@ export function parseLetterboxd(text: string, fileName: string): Draft[] {
   });
 }
 
-const IMDB_KIND: Record<string, { tag: string; kind: string }> = {
-  movie: { tag: "movies", kind: "movie" },
-  "tv movie": { tag: "movies", kind: "movie" },
-  short: { tag: "movies", kind: "movie" },
-  video: { tag: "movies", kind: "movie" },
-  "tv series": { tag: "series", kind: "series" },
-  "tv mini series": { tag: "series", kind: "series" },
-  "tv special": { tag: "series", kind: "series" },
-  "tv episode": { tag: "series", kind: "series" },
-  "video game": { tag: "games", kind: "game" },
-  podcast: { tag: "podcasts", kind: "podcast" },
+const IMDB_KIND: Record<string, Kind> = {
+  movie: "movie",
+  "tv movie": "movie",
+  short: "movie",
+  video: "movie",
+  "tv series": "series",
+  "tv mini series": "series",
+  "tv special": "series",
+  "tv episode": "series",
+  "video game": "game",
+  podcast: "podcast",
 };
 
-export function parseImdb(text: string): Draft[] {
+export function parseImdb(text: string, locale: Locale): Draft[] {
   const { rows, fields } = parseCsv(text);
   if (!fields.includes("Const") || !fields.includes("Title")) {
-    throw new Error("This doesn't look like an IMDb export (no “Const” / “Title” columns).");
+    throw new ImportFormatError("imdb");
   }
   return rows.map((r) => {
-    const type = IMDB_KIND[(r["Title Type"] ?? "").trim().toLowerCase()] ?? { tag: "movies", kind: "movie" };
+    const kind = IMDB_KIND[(r["Title Type"] ?? "").trim().toLowerCase()] ?? "movie";
     const rated = Boolean(r["Your Rating"]?.trim());
     const runtime = num(r["Runtime (mins)"]);
     const addedAt = date(r["Created"]) ?? date(r["Date Rated"]);
@@ -227,16 +186,16 @@ export function parseImdb(text: string): Draft[] {
       title: r["Title"]?.trim() ?? "",
       creator: r["Directors"]?.split(",")[0]?.trim() || undefined,
       year: num(r["Year"]),
-      tagNames: [type.tag],
+      tagNames: [KIND_TAGS[kind][locale]],
       description: r["Description"]?.trim() || undefined,
       // For series the runtime is one episode's: not a time to finish.
-      durationMinutes: type.kind === "movie" ? runtime : undefined,
+      durationMinutes: kind === "movie" ? runtime : undefined,
       status: rated ? "done" : "active",
       addedAt,
       finishedAt: rated ? (date(r["Date Rated"]) ?? addedAt) : undefined,
       source: "IMDb",
       sourceUrl: r["URL"]?.trim() || (r["Const"] ? `https://www.imdb.com/title/${r["Const"].trim()}/` : undefined),
-      kind: type.kind,
+      kind,
     } satisfies Draft;
   });
 }
@@ -253,7 +212,8 @@ export function parseText(text: string, tagNames: string[]): Draft[] {
     )
     .filter((line) => line.length > 0)
     .map((line) => {
-      const by = line.match(/^(.+?)\s+(?:by|—|–| - )\s+(.+)$/i);
+      // "by" / Polish "autorstwa" / a dash. Not Spanish "de": too common in titles.
+      const by = line.match(/^(.+?)\s+(?:by|autorstwa|—|–|-)\s+(.+)$/i);
       return {
         title: by ? by[1].trim() : line,
         creator: by ? by[2].trim() : undefined,
@@ -263,16 +223,16 @@ export function parseText(text: string, tagNames: string[]): Draft[] {
     });
 }
 
-export function parseFile(source: SourceId, text: string, fileName: string): Draft[] {
+export function parseFile(source: SourceId, text: string, fileName: string, locale: Locale): Draft[] {
   const drafts =
     source === "goodreads"
-      ? parseGoodreads(text)
+      ? parseGoodreads(text, locale)
       : source === "storygraph"
-        ? parseStoryGraph(text)
+        ? parseStoryGraph(text, locale)
         : source === "letterboxd"
-          ? parseLetterboxd(text, fileName)
+          ? parseLetterboxd(text, fileName, locale)
           : source === "imdb"
-            ? parseImdb(text)
+            ? parseImdb(text, locale)
             : parseText(text, []);
   return drafts.filter((d) => d.title);
 }

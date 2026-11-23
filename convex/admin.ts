@@ -2,7 +2,8 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { canUseAi, isAdmin, requireAdmin } from "./lib/auth";
+import { canUseAi, isAdmin, requireAdmin, requireUserId } from "./lib/auth";
+import { localeValidator } from "./lib/locales";
 
 export const me = query({
   args: {},
@@ -12,9 +13,19 @@ export const me = query({
     const user = await ctx.db.get("users", userId);
     return {
       email: user?.email ?? null,
+      locale: user?.locale ?? null,
       isAdmin: await isAdmin(ctx, userId),
       aiEnabled: await canUseAi(ctx, userId),
     };
+  },
+});
+
+export const setLocale = mutation({
+  args: { locale: localeValidator },
+  handler: async (ctx, { locale }) => {
+    const userId = await requireUserId(ctx);
+    await ctx.db.patch("users", userId, { locale });
+    return null;
   },
 });
 

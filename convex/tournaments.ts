@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { requireUserId } from "./lib/auth";
 import { buildRanking, mergeImported, type Comparison } from "./lib/ranking";
 import { resultValidator } from "./schema";
+import { fail } from "./lib/errors";
 
 const MAX_PARTICIPANTS = 1000;
 const MAX_COMPARISONS = 20000;
@@ -12,7 +13,7 @@ const MAX_COMPARISONS = 20000;
 async function requireOwnTournament(ctx: QueryCtx, tournamentId: Id<"tournaments">) {
   const userId = await requireUserId(ctx);
   const t = await ctx.db.get("tournaments", tournamentId);
-  if (t === null || t.userId !== userId) throw new Error("Tournament not found");
+  if (t === null || t.userId !== userId) fail("notFound");
   return t;
 }
 
@@ -35,7 +36,7 @@ async function importedFrom(ctx: QueryCtx, userId: Id<"users">, ids: Id<"tournam
   const all: Comparison<Id<"items">>[] = [];
   for (const id of ids) {
     const t = await ctx.db.get("tournaments", id);
-    if (t === null || t.userId !== userId) throw new Error("Tournament not found");
+    if (t === null || t.userId !== userId) fail("notFound");
     for (const c of await comparisonsOf(ctx, id)) all.push({ a: c.a, b: c.b, result: c.result });
   }
   return mergeImported(participants, all);
@@ -122,9 +123,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const participants = await participantsFor(ctx, userId, args.tagIds);
-    if (participants.length < 2) throw new Error("A tournament needs at least two unfinished items");
+    if (participants.length < 2) fail("needTwoItems");
     if (participants.length > MAX_PARTICIPANTS) {
-      throw new Error(`Too many items (${participants.length}); filter by tags to get under ${MAX_PARTICIPANTS}`);
+      fail("tooManyItems", { count: participants.length, max: MAX_PARTICIPANTS });
     }
     const ids = participants.map((p) => p._id);
     const { accepted, conflicts } = await importedFrom(ctx, userId, args.importFrom, ids);
@@ -181,10 +182,10 @@ export const record = mutation({
   },
   handler: async (ctx, { tournamentId, a, b, result }) => {
     const t = await requireOwnTournament(ctx, tournamentId);
-    if (t.status !== "active") throw new Error("This tournament is over");
+    if (t.status !== "active") fail("tournamentOver");
     const comparisons = await comparisonsOf(ctx, tournamentId);
     const ranking = buildRanking(await liveParticipants(ctx, t), comparisons);
-    if (!ranking.has(a) || !ranking.has(b) || a === b) throw new Error("Not a pair in this tournament");
+    if (!ranking.has(a) || !ranking.has(b) || a === b) fail("notFound");
     // Already decided (e.g. a double click): nothing to record.
     if (ranking.relation(a, b) !== "unknown") return null;
     await ctx.db.insert("comparisons", { tournamentId, a, b, result, imported: false });
@@ -213,7 +214,7 @@ export const rename = mutation({
   args: { tournamentId: v.id("tournaments"), name: v.string() },
   handler: async (ctx, { tournamentId, name }) => {
     await requireOwnTournament(ctx, tournamentId);
-    if (!name.trim()) throw new Error("Name can't be empty");
+    if (!name.trim()) fail("emptyName");
     await ctx.db.patch("tournaments", tournamentId, { name: name.trim() });
     return null;
   },

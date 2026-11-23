@@ -18,10 +18,12 @@
     "ai": "^7.0.180",
     "convex": "^1.51.0",
     "fuse.js": "^7.5.0",
+    "i18next": "^27.2.6",
     "lucide-react": "^1.78.0",
     "papaparse": "^5.7.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-i18next": "^18.0.3",
     "tailwindcss": "^4.3.5",
     "zod": "^4.6.7"
   },

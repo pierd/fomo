@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { normalizeTag } from "../lib/tags";
 
 // Chips for chosen tags plus a text box suggesting existing ones. Tags that
@@ -8,7 +9,7 @@ export function TagInput({
   value,
   onChange,
   existing,
-  placeholder = "Add tags…",
+  placeholder,
   autoFocus = false,
 }: {
   value: string[];
@@ -17,6 +18,7 @@ export function TagInput({
   placeholder?: string;
   autoFocus?: boolean;
 }) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -58,9 +60,9 @@ export function TagInput({
                   ? "inline-flex items-center gap-1 rounded-full border border-dashed border-new bg-new-soft px-2 py-0.5 text-xs text-new"
                   : "chip"
               }
-              title={isNew ? "This tag will be created" : undefined}
+              title={isNew ? t("tags.willBeCreated") : undefined}
             >
-              {isNew && <span className="font-semibold">new</span>}
+              {isNew && <span className="font-semibold">{t("tags.new")}</span>}
               {tag}
               <button
                 type="button"
@@ -69,7 +71,7 @@ export function TagInput({
                   e.stopPropagation();
                   onChange(value.filter((t) => t !== tag));
                 }}
-                aria-label={`Remove ${tag}`}
+                aria-label={t("tags.remove", { tag })}
               >
                 <X size={12} />
               </button>
@@ -80,7 +82,7 @@ export function TagInput({
           ref={inputRef}
           autoFocus={autoFocus}
           value={text}
-          placeholder={value.length ? "" : placeholder}
+          placeholder={value.length ? "" : (placeholder ?? t("tags.addPlaceholder"))}
           className="min-w-24 flex-1 bg-transparent outline-none placeholder:text-muted"
           onChange={(e) => {
             setText(e.target.value);
@@ -128,7 +130,7 @@ export function TagInput({
                     <>
                       <Plus size={14} className="text-new" />
                       <span>
-                        Create <span className="font-medium text-new">“{tag}”</span>
+                        {t("tags.create")} <span className="font-medium text-new">“{tag}”</span>
                       </span>
                     </>
                   ) : (

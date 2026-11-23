@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
+import { localeValidator } from "./lib/locales";
 
 export const statusValidator = v.union(v.literal("active"), v.literal("done"), v.literal("discarded"));
 
@@ -31,6 +32,8 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     aiEnabled: v.optional(v.boolean()),
+    // UI language; also the language of default tags and AI output.
+    locale: v.optional(localeValidator),
   })
     .index("email", ["email"])
     .index("phone", ["phone"]),

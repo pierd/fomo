@@ -34,7 +34,7 @@ describe("flows", () => {
     expect(items[0]).toMatchObject({ durationMode: "pages", pages: 540, status: "active" });
     await expect(
       as.mutation(api.items.create, { title: "x", tagNames: [], cleanup: true }),
-    ).rejects.toThrow(/locked/);
+    ).rejects.toThrow(/aiLocked/);
     await as.mutation(api.items.setStatus, { itemId: id, status: "done" });
     items = await as.query(api.items.list, {});
     expect(items[0].finishedAt).toBeTypeOf("number");

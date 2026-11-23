@@ -18,6 +18,8 @@ import type * as items from "../items.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_covers from "../lib/covers.js";
 import type * as lib_duration from "../lib/duration.js";
+import type * as lib_errors from "../lib/errors.js";
+import type * as lib_locales from "../lib/locales.js";
 import type * as lib_ranking from "../lib/ranking.js";
 import type * as lib_tags from "../lib/tags.js";
 import type * as tags from "../tags.js";
@@ -40,6 +42,8 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/covers": typeof lib_covers;
   "lib/duration": typeof lib_duration;
+  "lib/errors": typeof lib_errors;
+  "lib/locales": typeof lib_locales;
   "lib/ranking": typeof lib_ranking;
   "lib/tags": typeof lib_tags;
   tags: typeof tags;

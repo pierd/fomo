@@ -2,10 +2,11 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import type { ActionCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
+import { fail } from "./errors";
 
 export async function requireUserId(ctx: QueryCtx | ActionCtx) {
   const userId = await getAuthUserId(ctx);
-  if (userId === null) throw new Error("Not signed in");
+  if (userId === null) fail("notSignedIn");
   return userId;
 }
 
@@ -24,7 +25,7 @@ export async function canUseAi(ctx: QueryCtx, userId: Id<"users">) {
 
 export async function requireAdmin(ctx: QueryCtx) {
   const userId = await requireUserId(ctx);
-  if (!(await isAdmin(ctx, userId))) throw new Error("Admins only");
+  if (!(await isAdmin(ctx, userId))) fail("adminsOnly");
   return userId;
 }
 
@@ -32,13 +33,13 @@ export async function requireAdmin(ctx: QueryCtx) {
 export async function requireAiInAction(ctx: ActionCtx) {
   const userId = await requireUserId(ctx);
   const allowed: boolean = await ctx.runQuery(internal.admin.checkAi, { userId });
-  if (!allowed) throw new Error("AI features are locked for this account");
+  if (!allowed) fail("aiLocked");
   return userId;
 }
 
 export async function requireOwnItem(ctx: QueryCtx, itemId: Id<"items">) {
   const userId = await requireUserId(ctx);
   const item = await ctx.db.get("items", itemId);
-  if (item === null || item.userId !== userId) throw new Error("Item not found");
+  if (item === null || item.userId !== userId) fail("notFound");
   return item;
 }

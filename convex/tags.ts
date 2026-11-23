@@ -3,18 +3,9 @@ import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireUserId } from "./lib/auth";
-import { normalizeTag } from "./lib/tags";
+import { defaultTags, normalizeTag } from "./lib/tags";
+import { fail } from "./lib/errors";
 
-export const DEFAULT_TAGS = [
-  "books",
-  "movies",
-  "series",
-  "games",
-  "podcasts",
-  "fiction",
-  "non-fiction",
-  "documentary",
-];
 
 
 export const list = query({
@@ -48,7 +39,8 @@ export async function ensureTags(ctx: MutationCtx, userId: Id<"users">, names: s
 export const seedDefaults = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    await ensureTags(ctx, userId, DEFAULT_TAGS);
+    const user = await ctx.db.get("users", userId);
+    await ensureTags(ctx, userId, defaultTags(user?.locale ?? "en"));
     return null;
   },
 });
@@ -58,14 +50,14 @@ export const rename = mutation({
   handler: async (ctx, { tagId, name }) => {
     const userId = await requireUserId(ctx);
     const tag = await ctx.db.get("tags", tagId);
-    if (tag === null || tag.userId !== userId) throw new Error("Tag not found");
+    if (tag === null || tag.userId !== userId) fail("notFound");
     const clean = normalizeTag(name);
-    if (!clean) throw new Error("Tag name can't be empty");
+    if (!clean) fail("emptyName");
     const clash = await ctx.db
       .query("tags")
       .withIndex("by_userId_and_name", (q) => q.eq("userId", userId).eq("name", clean))
       .unique();
-    if (clash !== null && clash._id !== tagId) throw new Error(`Tag "${clean}" already exists`);
+    if (clash !== null && clash._id !== tagId) fail("tagExists", { name: clean });
     await ctx.db.patch("tags", tagId, { name: clean });
     return null;
   },

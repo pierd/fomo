@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Item, Tag } from "../lib/types";
-import { formatMinutes, plural } from "../lib/format";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
+import { formatMinutes, formatNumber } from "../lib/format";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; now: number }) {
+  const { t } = useTranslation();
   const active = items.filter((i) => i.status === "active");
   const done = items.filter((i) => i.status === "done");
   const timed = active.filter((i) => i.durationMinutes !== undefined && i.durationMode !== "na");
@@ -28,7 +31,7 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
 
   const byTag = (() => {
     const m = new Map<string, { count: number; minutes: number }>();
-    const name = new Map(tags.map((t) => [t._id, t.name]));
+    const name = new Map(tags.map((tag) => [tag._id, tag.name]));
     for (const i of active) {
       for (const id of i.tagIds) {
         const n = name.get(id);
@@ -44,27 +47,27 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Stats</h1>
+      <h1 className="text-2xl font-bold">{t("nav.stats")}</h1>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <Tile label="To do" value={active.length.toLocaleString()} sub={`${done.length.toLocaleString()} done so far`} />
         <Tile
-          label="Time to finish all"
+          label={t("stats.toDo")}
+          value={formatNumber(active.length)}
+          sub={t("stats.doneSoFar", { count: done.length })}
+        />
+        <Tile
+          label={t("stats.timeToFinishAll")}
           value={remaining ? formatMinutes(remaining) : "—"}
-          sub={untimed ? `+ ${plural(untimed, "item")} without a time` : "for everything on the list"}
+          sub={untimed ? t("stats.untimed", { count: untimed }) : t("stats.forEverything")}
         />
         <Tile
-          label="At your pace"
+          label={t("stats.atYourPace")}
           value={daysToClear === null ? "—" : formatMinutes(daysToClear * 24 * 60)}
-          sub={
-            daysToClear === null
-              ? "finish some timed items to see"
-              : `to clear the list (${formatMinutes(perDay * 7)}/week lately)`
-          }
+          sub={daysToClear === null ? t("stats.paceUnknown") : t("stats.paceSub", { time: formatMinutes(perDay * 7) })}
         />
         <Tile
-          label="Done in the last year"
-          value={doneThisYear.length.toLocaleString()}
-          sub={medianWait === null ? "" : `typically ${Math.round(medianWait)} days on the list`}
+          label={t("stats.doneLastYear")}
+          value={formatNumber(doneThisYear.length)}
+          sub={medianWait === null ? "" : t("stats.typicalWait", { count: Math.round(medianWait) })}
         />
       </div>
 
@@ -72,8 +75,8 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
 
       {byTag.length > 0 && (
         <div className="card p-4">
-          <h2 className="font-semibold">Time to finish by tag</h2>
-          <p className="mb-3 text-sm text-muted">Unfinished items. One item can have several tags.</p>
+          <h2 className="font-semibold">{t("stats.byTag")}</h2>
+          <p className="mb-3 text-sm text-muted">{t("stats.byTagHint")}</p>
           <ul className="space-y-2">
             {byTag.map(([tag, v]) => (
               <li key={tag} className="grid grid-cols-[7rem_1fr_auto] items-center gap-3 text-sm">
@@ -134,6 +137,7 @@ function series(items: Item[], now: number): Point[] {
 }
 
 function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
+  const { t } = useTranslation();
   const data = useMemo(() => series(items, now), [items, now]);
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
@@ -151,7 +155,7 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
   if (data.length < 2) {
     return (
       <div className="card p-4 text-sm text-muted">
-        The adding-vs-finishing chart appears once your list has some history.
+        {t("stats.chartEmpty")}
       </div>
     );
   }
@@ -169,24 +173,25 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
   const ticks = [0, maxY / 2, maxY];
   const last = data[data.length - 1];
   const hovered = hover === null ? null : data[hover];
-  const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  const fmt = (ms: number) => new Date(ms).toLocaleDateString(i18n.language, { month: "short", year: "numeric" });
+  const day = (ms: number) => new Date(ms).toLocaleDateString(i18n.language);
 
   return (
     <div className="card p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="font-semibold">Adding vs finishing</h2>
-          <p className="text-sm text-muted">Items added and done over time, in total. The gap is your list.</p>
+          <h2 className="font-semibold">{t("stats.chartTitle")}</h2>
+          <p className="text-sm text-muted">{t("stats.chartHint")}</p>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted">
           <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded bg-series-1" /> Added
+            <span className="h-0.5 w-4 rounded bg-series-1" /> {t("stats.added")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded bg-series-2" /> Done
+            <span className="h-0.5 w-4 rounded bg-series-2" /> {t("stats.done")}
           </span>
           <button className="underline" onClick={() => setTable((t) => !t)}>
-            {table ? "Chart" : "Table"}
+            {table ? t("stats.showChart") : t("stats.showTable")}
           </button>
         </div>
       </div>
@@ -196,15 +201,15 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
             <table className="w-full tabular-nums">
               <thead className="text-left text-xs text-muted">
                 <tr>
-                  <th className="py-1 font-medium">Date</th>
-                  <th className="py-1 text-right font-medium">Added</th>
-                  <th className="py-1 text-right font-medium">Done</th>
+                  <th className="py-1 font-medium">{t("stats.date")}</th>
+                  <th className="py-1 text-right font-medium">{t("stats.added")}</th>
+                  <th className="py-1 text-right font-medium">{t("stats.done")}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((d) => (
                   <tr key={d.t} className="border-t border-line">
-                    <td className="py-1">{new Date(d.t).toLocaleDateString()}</td>
+                    <td className="py-1">{day(d.t)}</td>
                     <td className="py-1 text-right">{d.added}</td>
                     <td className="py-1 text-right">{d.done}</td>
                   </tr>
@@ -221,16 +226,16 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
               onMouseMove={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const px = e.clientX - rect.left;
-                const t = t0 + ((px - pad.l) / w) * (t1 - t0);
+                const at = t0 + ((px - pad.l) / w) * (t1 - t0);
                 let best = 0;
                 for (let i = 1; i < data.length; i++) {
-                  if (Math.abs(data[i].t - t) < Math.abs(data[best].t - t)) best = i;
+                  if (Math.abs(data[i].t - at) < Math.abs(data[best].t - at)) best = i;
                 }
                 setHover(best);
               }}
               onMouseLeave={() => setHover(null)}
               role="img"
-              aria-label={`Added ${last.added}, done ${last.done} in total`}
+              aria-label={t("stats.chartAria", { added: last.added, done: last.done })}
             >
               {ticks.map((v) => (
                 <g key={v}>
@@ -250,7 +255,7 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
               <path d={path("done")} fill="none" stroke="var(--series-2)" strokeWidth={2} strokeLinejoin="round" />
               {/* Direct labels at the line ends. */}
               <text x={pad.l + w + 6} y={y(last.added) + 4} fontSize={11} fill="var(--ink)">
-                {last.added} added
+                {t("stats.addedLabel", { count: last.added })}
               </text>
               <text
                 x={pad.l + w + 6}
@@ -258,7 +263,7 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
                 fontSize={11}
                 fill="var(--ink)"
               >
-                {last.done} done
+                {t("stats.doneLabel", { count: last.done })}
               </text>
               {hovered && (
                 <g>
@@ -275,14 +280,14 @@ function AddedVsDone({ items, now }: { items: Item[]; now: number }) {
                   left: Math.min(x(hovered.t) + 10, width - 150),
                 }}
               >
-                <div className="mb-1 font-medium">{new Date(hovered.t).toLocaleDateString()}</div>
+                <div className="mb-1 font-medium">{day(hovered.t)}</div>
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-series-1" /> Added <b className="ml-auto pl-3">{hovered.added}</b>
+                  <span className="h-2 w-2 rounded-full bg-series-1" /> {t("stats.added")} <b className="ml-auto pl-3">{hovered.added}</b>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-series-2" /> Done <b className="ml-auto pl-3">{hovered.done}</b>
+                  <span className="h-2 w-2 rounded-full bg-series-2" /> {t("stats.done")} <b className="ml-auto pl-3">{hovered.done}</b>
                 </div>
-                <div className="mt-1 text-muted">{hovered.added - hovered.done} not done</div>
+                <div className="mt-1 text-muted">{t("stats.notDone", { count: hovered.added - hovered.done })}</div>
               </div>
             )}
           </>
