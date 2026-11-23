@@ -303,14 +303,11 @@
     "doneSoFar_one": "{{count}} terminado hasta ahora",
     "doneSoFar_many": "{{count}} terminados hasta ahora",
     "doneSoFar_other": "{{count}} terminados hasta ahora",
-    "timeToFinishAll": "Tiempo para terminarlo todo",
     "untimed_one": "+ {{count}} elemento sin tiempo",
     "untimed_many": "+ {{count}} elementos sin tiempo",
     "untimed_other": "+ {{count}} elementos sin tiempo",
-    "forEverything": "para todo lo que hay en la lista",
     "atYourPace": "A tu ritmo",
     "paceUnknown": "termina algunos elementos con tiempo para verlo",
-    "paceSub": "para vaciar la lista ({{time}}/semana últimamente)",
     "doneLastYear": "Terminados en el último año",
     "typicalWait_one": "suelen pasar {{count}} día en la lista",
     "typicalWait_many": "suelen pasar {{count}} días en la lista",
@@ -334,7 +331,14 @@
     "notDone_other": "{{count}} sin terminar",
     "showChart": "Gráfico",
     "showTable": "Tabla",
-    "date": "Fecha"
+    "date": "Fecha",
+    "allItems": "Todo",
+    "onlyTagged": "Solo con las etiquetas",
+    "timeLeft": "Tiempo restante",
+    "timeLeftSub": "de lectura, cine y juego",
+    "nothingLeft": "No queda nada",
+    "paceSubYear": "terminaste el equivalente a {{time}} en el último año",
+    "paceSubSince": "terminaste el equivalente a {{time}} desde que empezaste ({{span}})"
   },
   "admin": {
     "intro": "Las funciones de IA (ordenar, estimar tiempos, leer notas) están bloqueadas hasta que se desbloqueen aquí.",
@@ -342,5 +346,20 @@
     "joined": "se unió el {{date}}",
     "isAdmin": "admin",
     "aiUnlocked": "IA desbloqueada"
+  },
+  "span": {
+    "lessThanDay": "menos de un día",
+    "days_one": "{{n}} día",
+    "days_many": "{{n}} días",
+    "days_other": "{{n}} días",
+    "weeks_one": "{{n}} semana",
+    "weeks_many": "{{n}} semanas",
+    "weeks_other": "{{n}} semanas",
+    "months_one": "{{n}} mes",
+    "months_many": "{{n}} meses",
+    "months_other": "{{n}} meses",
+    "years_one": "{{n}} año",
+    "years_many": "{{n}} años",
+    "years_other": "{{n}} años"
   }
 }

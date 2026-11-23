@@ -14,7 +14,8 @@ function initialLocale(): Locale {
   } catch {
     // Storage unavailable.
   }
-  for (const lang of navigator.languages ?? [navigator.language]) {
+  const languages = typeof navigator === "undefined" ? [] : (navigator.languages ?? [navigator.language]);
+  for (const lang of languages) {
     const l = lang.slice(0, 2).toLowerCase();
     if (l === "en" || l === "es" || l === "pl") return l;
   }
@@ -28,15 +29,19 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+const setHtmlLang = (lng: string) => {
+  if (typeof document !== "undefined") document.documentElement.lang = lng;
+};
+
 i18n.on("languageChanged", (lng) => {
-  document.documentElement.lang = lng;
+  setHtmlLang(lng);
   try {
     localStorage.setItem(STORAGE_KEY, lng);
   } catch {
     // Storage unavailable.
   }
 });
-document.documentElement.lang = i18n.language;
+setHtmlLang(i18n.language);
 
 export function currentLocale(): Locale {
   return toLocale(i18n.language);

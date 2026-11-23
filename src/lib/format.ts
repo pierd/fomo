@@ -33,3 +33,24 @@ export function errorMessage(e: unknown) {
   console.error(e);
   return i18n.t("errors.generic");
 }
+
+// Calendar time: "3 days", "5 weeks", "8 months", "2.5 years".
+export function formatSpan(days: number) {
+  const t = i18n.t.bind(i18n);
+  const num = (n: number, digits = 0) => n.toLocaleString(i18n.language, { maximumFractionDigits: digits });
+  if (days < 1) return t("span.lessThanDay");
+  if (days < 14) {
+    const n = Math.round(days);
+    return t("span.days", { count: n, n: num(n) });
+  }
+  if (days < 60) {
+    const n = Math.round(days / 7);
+    return t("span.weeks", { count: n, n: num(n) });
+  }
+  if (days < 730) {
+    const n = Math.round(days / 30.4);
+    return t("span.months", { count: n, n: num(n) });
+  }
+  const years = Math.round((days / 365) * 10) / 10;
+  return t("span.years", { count: years, n: num(years, 1) });
+}

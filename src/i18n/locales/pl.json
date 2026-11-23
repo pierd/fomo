@@ -320,15 +320,12 @@
     "doneSoFar_few": "{{count}} ukończone do tej pory",
     "doneSoFar_many": "{{count}} ukończonych do tej pory",
     "doneSoFar_other": "{{count}} ukończonych do tej pory",
-    "timeToFinishAll": "Czas na wszystko",
     "untimed_one": "+ {{count}} pozycja bez czasu",
     "untimed_few": "+ {{count}} pozycje bez czasu",
     "untimed_many": "+ {{count}} pozycji bez czasu",
     "untimed_other": "+ {{count}} pozycji bez czasu",
-    "forEverything": "na wszystko z listy",
     "atYourPace": "W Twoim tempie",
     "paceUnknown": "ukończ kilka pozycji z czasem, żeby to zobaczyć",
-    "paceSub": "do wyczyszczenia listy (ostatnio {{time}}/tydzień)",
     "doneLastYear": "Ukończone w ostatnim roku",
     "typicalWait_one": "zwykle {{count}} dzień na liście",
     "typicalWait_few": "zwykle {{count}} dni na liście",
@@ -356,7 +353,14 @@
     "notDone_other": "{{count}} nieukończonych",
     "showChart": "Wykres",
     "showTable": "Tabela",
-    "date": "Data"
+    "date": "Data",
+    "allItems": "Wszystko",
+    "onlyTagged": "Tylko z tagami",
+    "timeLeft": "Pozostały czas",
+    "timeLeftSub": "czytania, oglądania i grania",
+    "nothingLeft": "Nic nie zostało",
+    "paceSubYear": "w ostatnim roku ukończono pozycje warte {{time}}",
+    "paceSubSince": "od początku ({{span}}) ukończono pozycje warte {{time}}"
   },
   "admin": {
     "intro": "Funkcje AI (porządkowanie, szacowanie czasu, czytanie notatek) są zablokowane, dopóki nie odblokujesz ich tutaj.",
@@ -364,5 +368,24 @@
     "joined": "od {{date}}",
     "isAdmin": "admin",
     "aiUnlocked": "AI odblokowane"
+  },
+  "span": {
+    "lessThanDay": "mniej niż dzień",
+    "days_one": "{{n}} dzień",
+    "days_few": "{{n}} dni",
+    "days_many": "{{n}} dni",
+    "days_other": "{{n}} dnia",
+    "weeks_one": "{{n}} tydzień",
+    "weeks_few": "{{n}} tygodnie",
+    "weeks_many": "{{n}} tygodni",
+    "weeks_other": "{{n}} tygodnia",
+    "months_one": "{{n}} miesiąc",
+    "months_few": "{{n}} miesiące",
+    "months_many": "{{n}} miesięcy",
+    "months_other": "{{n}} miesiąca",
+    "years_one": "{{n}} rok",
+    "years_few": "{{n}} lata",
+    "years_many": "{{n}} lat",
+    "years_other": "{{n}} roku"
   }
 }

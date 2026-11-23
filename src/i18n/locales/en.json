@@ -286,13 +286,10 @@
     "toDo": "To do",
     "doneSoFar_one": "{{count}} done so far",
     "doneSoFar_other": "{{count}} done so far",
-    "timeToFinishAll": "Time to finish all",
     "untimed_one": "+ {{count}} item without a time",
     "untimed_other": "+ {{count}} items without a time",
-    "forEverything": "for everything on the list",
     "atYourPace": "At your pace",
     "paceUnknown": "finish some timed items to see",
-    "paceSub": "to clear the list ({{time}}/week lately)",
     "doneLastYear": "Done in the last year",
     "typicalWait_one": "typically {{count}} day on the list",
     "typicalWait_other": "typically {{count}} days on the list",
@@ -312,7 +309,14 @@
     "notDone_other": "{{count}} not done",
     "showChart": "Chart",
     "showTable": "Table",
-    "date": "Date"
+    "date": "Date",
+    "allItems": "Everything",
+    "onlyTagged": "Only items tagged",
+    "timeLeft": "Time left",
+    "timeLeftSub": "of reading, watching and playing",
+    "nothingLeft": "Nothing left",
+    "paceSubYear": "you finished {{time}} worth in the last year",
+    "paceSubSince": "you finished {{time}} worth since you started ({{span}})"
   },
   "admin": {
     "intro": "AI features (clean-up, time estimates, reading notes) are locked until unlocked here.",
@@ -320,5 +324,16 @@
     "joined": "joined {{date}}",
     "isAdmin": "admin",
     "aiUnlocked": "AI unlocked"
+  },
+  "span": {
+    "lessThanDay": "less than a day",
+    "days_one": "{{n}} day",
+    "days_other": "{{n}} days",
+    "weeks_one": "{{n}} week",
+    "weeks_other": "{{n}} weeks",
+    "months_one": "{{n}} month",
+    "months_other": "{{n}} months",
+    "years_one": "{{n}} year",
+    "years_other": "{{n}} years"
   }
 }

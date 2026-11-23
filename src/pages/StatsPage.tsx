@@ -2,26 +2,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Item, Tag } from "../lib/types";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
-import { formatMinutes, formatNumber } from "../lib/format";
+import { Tag as TagIcon, X } from "lucide-react";
+import { formatMinutes, formatNumber, formatSpan } from "../lib/format";
+import { computePace, DAY } from "../lib/pace";
+import { usePersistentState } from "../lib/usePersistentState";
 
-const DAY = 24 * 60 * 60 * 1000;
 
-export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; now: number }) {
+export function StatsPage({ items: allItems, tags, now }: { items: Item[]; tags: Tag[]; now: number }) {
   const { t } = useTranslation();
+  const [selected, setSelected] = usePersistentState<string[]>("fomo.stats.tags", []);
+  const tagName = new Map(tags.map((tag) => [tag._id, tag.name]));
+  // Drop selections of tags that were renamed or no longer exist.
+  const activeTags = selected.filter((name) => tags.some((tag) => tag.name === name));
+  const items = allItems.filter((i) => activeTags.every((name) => i.tagIds.some((id) => tagName.get(id) === name)));
+
   const active = items.filter((i) => i.status === "active");
   const done = items.filter((i) => i.status === "done");
-  const timed = active.filter((i) => i.durationMinutes !== undefined && i.durationMode !== "na");
-  const remaining = timed.reduce((s, i) => s + (i.durationMinutes ?? 0), 0);
-  const untimed = active.filter((i) => i.durationMinutes === undefined && i.durationMode !== "na").length;
+  const pace = computePace(items, now);
 
-  const yearAgo = now - 365 * DAY;
-  const doneThisYear = done.filter((i) => (i.finishedAt ?? 0) >= yearAgo);
-  // Pace: time's worth of items finished over the last 90 days.
-  const recent = done.filter((i) => (i.finishedAt ?? 0) >= now - 90 * DAY);
-  const recentMinutes = recent.reduce((s, i) => s + (i.durationMinutes ?? 0), 0);
-  const perDay = recentMinutes / 90;
-  const daysToClear = perDay > 0 ? remaining / perDay : null;
-
+  const doneThisYear = done.filter((i) => (i.finishedAt ?? 0) >= now - 365 * DAY);
   const waits = done
     .filter((i) => i.finishedAt !== undefined)
     .map((i) => (i.finishedAt! - i.addedAt) / DAY)
@@ -29,13 +28,26 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
     .sort((a, b) => a - b);
   const medianWait = waits.length ? waits[Math.floor(waits.length / 2)] : null;
 
+  // Tags offered in the filter: the ones items in the current selection have.
+  const tagCounts = (() => {
+    const m = new Map<string, number>();
+    for (const i of items) {
+      for (const id of i.tagIds) {
+        const n = tagName.get(id);
+        if (n) m.set(n, (m.get(n) ?? 0) + 1);
+      }
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+  const toggle = (name: string) =>
+    setSelected(activeTags.includes(name) ? activeTags.filter((x) => x !== name) : [...activeTags, name]);
+
   const byTag = (() => {
     const m = new Map<string, { count: number; minutes: number }>();
-    const name = new Map(tags.map((tag) => [tag._id, tag.name]));
     for (const i of active) {
       for (const id of i.tagIds) {
-        const n = name.get(id);
-        if (!n) continue;
+        const n = tagName.get(id);
+        if (!n || activeTags.includes(n)) continue;
         const e = m.get(n) ?? { count: 0, minutes: 0 };
         e.count++;
         e.minutes += i.durationMode !== "na" ? (i.durationMinutes ?? 0) : 0;
@@ -45,9 +57,41 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
     return [...m.entries()].sort((a, b) => b[1].minutes - a[1].minutes || b[1].count - a[1].count).slice(0, 10);
   })();
 
+  const paceSub =
+    pace.daysToClear === null
+      ? t("stats.paceUnknown")
+      : t(pace.fullYear ? "stats.paceSubYear" : "stats.paceSubSince", {
+          time: formatMinutes(pace.finishedMinutes),
+          span: formatSpan(pace.windowDays),
+        });
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("nav.stats")}</h1>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 inline-flex items-center gap-1 text-sm text-muted">
+          <TagIcon size={14} /> {activeTags.length ? t("stats.onlyTagged") : t("stats.allItems")}
+        </span>
+        {activeTags.map((name) => (
+          <button key={name} className="chip border-accent bg-accent-soft" onClick={() => toggle(name)}>
+            {name} <X size={12} className="opacity-60" />
+          </button>
+        ))}
+        {tagCounts
+          .filter(([name]) => !activeTags.includes(name))
+          .map(([name, n]) => (
+            <button key={name} className="chip hover:border-accent" onClick={() => toggle(name)}>
+              {name} <span className="text-muted">{n}</span>
+            </button>
+          ))}
+        {activeTags.length > 0 && (
+          <button className="text-xs text-muted underline" onClick={() => setSelected([])}>
+            {t("list.clearTags")}
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <Tile
           label={t("stats.toDo")}
@@ -55,14 +99,21 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
           sub={t("stats.doneSoFar", { count: done.length })}
         />
         <Tile
-          label={t("stats.timeToFinishAll")}
-          value={remaining ? formatMinutes(remaining) : "—"}
-          sub={untimed ? t("stats.untimed", { count: untimed }) : t("stats.forEverything")}
+          label={t("stats.timeLeft")}
+          value={pace.remainingMinutes ? formatMinutes(pace.remainingMinutes) : "—"}
+          sub={pace.untimed ? t("stats.untimed", { count: pace.untimed }) : t("stats.timeLeftSub")}
         />
         <Tile
           label={t("stats.atYourPace")}
-          value={daysToClear === null ? "—" : formatMinutes(daysToClear * 24 * 60)}
-          sub={daysToClear === null ? t("stats.paceUnknown") : t("stats.paceSub", { time: formatMinutes(perDay * 7) })}
+          value={
+            pace.daysToClear === null
+              ? "—"
+              : pace.remainingMinutes === 0
+                ? t("stats.nothingLeft")
+                : formatSpan(pace.daysToClear)
+          }
+          sub={paceSub}
+          highlight
         />
         <Tile
           label={t("stats.doneLastYear")}
@@ -99,9 +150,9 @@ export function StatsPage({ items, tags, now }: { items: Item[]; tags: Tag[]; no
   );
 }
 
-function Tile({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Tile({ label, value, sub, highlight = false }: { label: string; value: string; sub: string; highlight?: boolean }) {
   return (
-    <div className="card p-4">
+    <div className={`card p-4 ${highlight ? "border-accent" : ""}`}>
       <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
       <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
       <div className="mt-0.5 text-xs text-muted">{sub}</div>
