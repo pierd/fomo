@@ -30,8 +30,19 @@ describe("ranking", () => {
       const s = r.standings();
       expect(s.map((x) => x.itemId)).toEqual(Array.from({ length: Math.min(4, n) }, (_, i) => `i${i}`));
       expect(s.map((x) => x.rank)).toEqual(Array.from({ length: Math.min(4, n) }, (_, i) => i + 1));
-      if (n === 64) expect(asked).toBeLessThan(130);
+      // Close to the minimum for top 4: n - 4 for the knockout, plus about
+      // log2(n) for each of the next three places.
+      expect(asked).toBeLessThanOrEqual(n - 4 + 3 * Math.ceil(Math.log2(n)) + 2);
     }
+  });
+
+  it("estimates the questions left, not the open pairs", () => {
+    const ids = Array.from({ length: 526 }, (_, i) => `i${i}`);
+    const r = new Ranking(ids);
+    expect(r.progress().left).toBeGreaterThan(520);
+    expect(r.progress().left).toBeLessThan(560);
+    const { r: finished } = simulate(20, 5);
+    expect(finished.progress().left).toBe(0);
   });
 
   it("handles draws", () => {

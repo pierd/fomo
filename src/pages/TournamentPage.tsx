@@ -101,13 +101,13 @@ function TournamentView({ data }: { data: Data }) {
               <span>
                 {t("play.ruledOut", { ruledOut: progress.ruledOut, total: progress.total })}
               </span>
-              <span>{t("count.openQuestion", { count: progress.open })}</span>
+              <span>{t("play.questionsLeft", { count: progress.left })}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
               <div
                 className="h-full rounded-full bg-accent transition-all"
                 style={{
-                  width: `${Math.max(3, (progress.ruledOut / Math.max(1, progress.total - Math.min(4, progress.total))) * 100)}%`,
+                  width: `${Math.max(3, (asked / Math.max(1, asked + progress.left)) * 100)}%`,
                 }}
               />
             </div>

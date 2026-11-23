@@ -124,9 +124,11 @@ export class Ranking<Id extends string = string> {
     return this.openPairs().length === 0;
   }
 
-  // Somewhat random, but steering towards a conclusion: prefer items with the
-  // same number of known betters (winners meet winners, like a knockout) and
-  // items that have been compared the least.
+  // Somewhat random, but as few rounds as possible: always pair the strongest
+  // contenders (fewest known betters). That plays out as a knockout for the
+  // winner, then playoffs among those who only lost to it, and so on; anyone
+  // who loses to an item already 4th or worse drops out without more questions.
+  // Ties prefer evenly matched items that have been compared the least.
   nextPair(seed: number): [Id, Id] | null {
     const pairs = this.openPairs();
     if (pairs.length === 0) return null;
@@ -134,11 +136,9 @@ export class Ranking<Id extends string = string> {
     let best: [number, number] | null = null;
     let bestScore = Infinity;
     for (const [i, j] of pairs) {
-      const score =
-        Math.abs(this.above[i].size - this.above[j].size) * 10 +
-        this.direct[i] +
-        this.direct[j] +
-        rand() * 3;
+      const ai = this.above[i].size;
+      const aj = this.above[j].size;
+      const score = (ai + aj) * 100 + Math.abs(ai - aj) * 10 + this.direct[i] + this.direct[j] + rand() * 3;
       if (score < bestScore) {
         bestScore = score;
         best = [i, j];
@@ -156,10 +156,23 @@ export class Ranking<Id extends string = string> {
       .sort((x, y) => x.rank - y.rank);
   }
 
+  // Roughly how many more answers are needed: every undefeated item but one
+  // still has to lose (the knockout), then a few rounds of playoffs settle
+  // each of the remaining top places.
+  estimateLeft() {
+    const open = this.openPairs().length;
+    if (open === 0) return 0;
+    const c = this.candidates();
+    const undefeated = c.filter((i) => this.above[i].size === 0).length;
+    const playoffs = (TOP_K - 1) * Math.ceil(Math.log2(Math.max(2, c.length)));
+    return Math.max(1, Math.min(open, Math.max(0, undefeated - 1) + playoffs));
+  }
+
   progress() {
     const n = this.ids.length;
-    return { total: n, ruledOut: n - this.candidates().length, open: this.openPairs().length };
+    return { total: n, ruledOut: n - this.candidates().length, left: this.estimateLeft() };
   }
+
 }
 
 export function mulberry32(seed: number) {

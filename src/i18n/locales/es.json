@@ -64,10 +64,7 @@
     "answer_other": "{{count}} respuestas",
     "importedResult_one": "{{count}} resultado importado",
     "importedResult_many": "{{count}} resultados importados",
-    "importedResult_other": "{{count}} resultados importados",
-    "openQuestion_one": "{{count}} pregunta pendiente",
-    "openQuestion_many": "{{count}} preguntas pendientes",
-    "openQuestion_other": "{{count}} preguntas pendientes"
+    "importedResult_other": "{{count}} resultados importados"
   },
   "duration": {
     "m": "{{m}} min",
@@ -197,7 +194,10 @@
     "draw": "Empate",
     "drawHint": "No puedo decidir: empate (↓)",
     "undo": "Deshacer",
-    "keys": "Teclas: ← izquierda · → derecha · ↓ empate · z deshacer"
+    "keys": "Teclas: ← izquierda · → derecha · ↓ empate · z deshacer",
+    "questionsLeft_one": "queda {{count}} pregunta aprox.",
+    "questionsLeft_many": "quedan unas {{count}} preguntas",
+    "questionsLeft_other": "quedan unas {{count}} preguntas"
   },
   "results": {
     "title": "Clasificación final",

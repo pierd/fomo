@@ -67,11 +67,7 @@
     "importedResult_one": "{{count}} zaimportowany wynik",
     "importedResult_few": "{{count}} zaimportowane wyniki",
     "importedResult_many": "{{count}} zaimportowanych wyników",
-    "importedResult_other": "{{count}} zaimportowanych wyników",
-    "openQuestion_one": "{{count}} otwarte pytanie",
-    "openQuestion_few": "{{count}} otwarte pytania",
-    "openQuestion_many": "{{count}} otwartych pytań",
-    "openQuestion_other": "{{count}} otwartych pytań"
+    "importedResult_other": "{{count}} zaimportowanych wyników"
   },
   "duration": {
     "m": "{{m}} min",
@@ -208,7 +204,11 @@
     "draw": "Remis",
     "drawHint": "Nie umiem wybrać: remis (↓)",
     "undo": "Cofnij",
-    "keys": "Klawisze: ← lewa · → prawa · ↓ remis · z cofnij"
+    "keys": "Klawisze: ← lewa · → prawa · ↓ remis · z cofnij",
+    "questionsLeft_one": "zostało około {{count}} pytania",
+    "questionsLeft_few": "zostało około {{count}} pytań",
+    "questionsLeft_many": "zostało około {{count}} pytań",
+    "questionsLeft_other": "zostało około {{count}} pytania"
   },
   "results": {
     "title": "Wynik końcowy",

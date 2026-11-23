@@ -61,9 +61,7 @@
     "answer_one": "{{count}} answer",
     "answer_other": "{{count}} answers",
     "importedResult_one": "{{count}} imported result",
-    "importedResult_other": "{{count}} imported results",
-    "openQuestion_one": "{{count}} open question",
-    "openQuestion_other": "{{count}} open questions"
+    "importedResult_other": "{{count}} imported results"
   },
   "duration": {
     "m": "{{m}}m",
@@ -186,7 +184,9 @@
     "draw": "Draw",
     "drawHint": "Can't decide: a draw (↓)",
     "undo": "Undo",
-    "keys": "Keys: ← left · → right · ↓ draw · z undo"
+    "keys": "Keys: ← left · → right · ↓ draw · z undo",
+    "questionsLeft_one": "about {{count}} question left",
+    "questionsLeft_other": "about {{count}} questions left"
   },
   "results": {
     "title": "Final standing",
