@@ -16,6 +16,7 @@
     "tournaments": "Turnieje",
     "import": "Import",
     "stats": "Statystyki",
+    "agents": "Agenci AI",
     "admin": "Admin",
     "signOut": "Wyloguj się",
     "language": "Język"
@@ -47,7 +48,8 @@
     "notesTooLong": "Notatki są za długie. Podziel je (najwyżej {{max}} znaków).",
     "tagExists": "Tag „{{name}}” już istnieje.",
     "tournamentOver": "Ten turniej już się skończył.",
-    "noSuchAccount": "Nie ma konta z tym adresem e-mail."
+    "noSuchAccount": "Nie ma konta z tym adresem e-mail.",
+    "tooManyTokens": "Masz za dużo tokenów (najwyżej {{max}}). Najpierw unieważnij któryś."
   },
   "status": {
     "active": "Do zrobienia",
@@ -361,6 +363,60 @@
     "nothingLeft": "Nic nie zostało",
     "paceSubYear": "w ostatnim roku ukończono pozycje warte {{time}}",
     "paceSubSince": "od początku ({{span}}) ukończono pozycje warte {{time}}"
+  },
+  "agents": {
+    "title": "Agenci AI",
+    "intro": "Zarządzaj listą z poziomu asystenta AI: poproś go, żeby dodał książki z artykułu, otagował pozycje, oznaczył je jako zrobione albo znalazł coś krótkiego na dziś wieczór. Łączy się przez MCP i ma dostęp tylko do twojej listy FOMO.",
+    "hint": "Zarządzaj tą listą z Claude, ChatGPT albo innego asystenta AI.",
+    "hintLink": "Połącz",
+    "pick": "Którego asystenta używasz?",
+    "needToken": "Utwórz token. Pozwala asystentowi korzystać z twojej listy i zostanie wstawiony w kroki poniżej.",
+    "create": "Utwórz token",
+    "tokenReady": "Token utworzony i wstawiony w kroki poniżej. Widać go tylko teraz, więc dokończ konfigurację, zanim opuścisz stronę.",
+    "runThis": "Uruchom w terminalu:",
+    "urlSecret": "Ten adres zawiera twój token: nie udostępniaj go. W każdej chwili możesz go unieważnić poniżej.",
+    "claude": {
+      "s1": "W Claude (w przeglądarce albo w aplikacji na komputer) otwórz Ustawienia → Łączniki i kliknij „Dodaj własny łącznik”.",
+      "s2": "Nazwij go FOMO i wklej ten adres jako URL:",
+      "s3": "Kliknij „Dodaj”. Potem w czacie włącz FOMO w menu narzędzi."
+    },
+    "chatgpt": {
+      "s1": "W ChatGPT otwórz Ustawienia → Aplikacje i łączniki → Ustawienia zaawansowane i włącz tryb dewelopera. (Nie jest dostępny w każdym planie).",
+      "s2": "Wróć do Aplikacji i łączników i kliknij „Utwórz”. Nazwij go FOMO, wybierz „Brak uwierzytelniania” i wklej ten adres jako URL serwera MCP:",
+      "s3": "Potwierdź, że ufasz aplikacji, i kliknij „Utwórz”. Potem w czacie dodaj FOMO z menu +."
+    },
+    "claudeCode": {
+      "s2": "Uruchom Claude Code i sprawdź, czy /mcp pokazuje fomo jako połączone."
+    },
+    "codex": {
+      "s1": "Zapisz token w zmiennej środowiskowej (dodaj tę linię do profilu powłoki, np. ~/.zshrc, żeby została na stałe):",
+      "s2": "Potem dodaj serwer:"
+    },
+    "gemini": {
+      "s2": "Uruchom Gemini CLI i sprawdź, czy /mcp pokazuje fomo."
+    },
+    "cursor": {
+      "s1": "Otwórz Cursor Settings → Tools & MCP → „New MCP Server” (otworzy ~/.cursor/mcp.json) i dodaj:"
+    },
+    "vscode": {
+      "s1": "Uruchom „MCP: Open User Configuration” z palety poleceń i dodaj:",
+      "s2": "Uruchom serwer z tego pliku i korzystaj z FOMO w trybie agenta w Copilot Chat."
+    },
+    "other": {
+      "name": "Inny",
+      "s1": "Zadziała każdy klient obsługujący zdalne serwery MCP (Streamable HTTP). Adres serwera:",
+      "s2": "Wysyłaj token w tym nagłówku:",
+      "s3": "Jeśli klient nie umie wysyłać nagłówków, użyj tego adresu:"
+    },
+    "tryAsking": "Potem spróbuj: „Dodaj do mojej listy FOMO książki z tego artykułu” albo „Jakie krótkie filmy zostały mi do obejrzenia?”",
+    "tokens": "Tokeny",
+    "tokensIntro": "Każdy, kto ma token, może zmieniać twoją listę. Unieważniaj te, których już nie używasz.",
+    "created": "utworzony {{date}}",
+    "lastUsed": "ostatnio użyty {{date}}",
+    "neverUsed": "nigdy nieużyty",
+    "revoke": "Unieważnij",
+    "revokeConfirm": "Unieważnić „{{name}}”? Asystenci, którzy go używają, stracą dostęp.",
+    "copy": "Kopiuj"
   },
   "admin": {
     "intro": "Funkcje AI (porządkowanie, szacowanie czasu, czytanie notatek) są zablokowane, dopóki nie odblokujesz ich tutaj.",

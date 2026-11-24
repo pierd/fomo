@@ -14,7 +14,8 @@ export type ErrorCode =
   | "notesTooLong"
   | "tagExists"
   | "tournamentOver"
-  | "noSuchAccount";
+  | "noSuchAccount"
+  | "tooManyTokens";
 
 export function fail(code: ErrorCode, params: Record<string, string | number> = {}): never {
   throw new ConvexError({ code, ...params });

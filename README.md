@@ -20,6 +20,14 @@ next. Live at https://fomo.lessismore.studio.
   frontend: results are a partial order closed under transitivity, draws merge
   items, only undecided pairs are asked, and it ends when the top 4 are fully
   ordered.
+- Agents: an MCP server at `<deployment>.convex.site/mcp` (`convex/mcp.ts`,
+  protocol in `convex/lib/mcpProtocol.ts`): stateless Streamable HTTP, tools
+  to list/add/update/delete items, set covers from a URL and list/rename tags. Agents authenticate
+  with personal tokens made on the AI agents page (`#/agents`, linked from the
+  header and a dismissible hint under the list), sent as a bearer header or,
+  for clients that can't send headers (ChatGPT, claude.ai), in the URL as
+  `/mcp/t/<token>`. Only SHA-256 hashes are stored (`convex/apiTokens.ts`);
+  every call runs as the token's owner.
 
 ## Develop
 

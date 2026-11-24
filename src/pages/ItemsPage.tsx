@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
-import { Plus, Search, Tag as TagIcon, X } from "lucide-react";
+import { Bot, Plus, Search, Tag as TagIcon, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import type { Item, Status, Tag } from "../lib/types";
 import { useTranslation } from "react-i18next";
 import { formatMinutes } from "../lib/format";
@@ -195,6 +197,8 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
         </ul>
       )}
 
+      <AgentsHint itemCount={items.length} />
+
       {form?.mode === "add" && (
         <ItemForm
           mode="add"
@@ -228,5 +232,28 @@ function EmptyState({ hasAny, filtered, onAdd }: { hasAny: boolean; filtered: bo
         </a>
       </div>
     </div>
+  );
+}
+
+// A quiet pointer to the Agents page, for people with a list worth managing
+// who haven't connected an agent yet. Dismissible for good.
+function AgentsHint({ itemCount }: { itemCount: number }) {
+  const { t } = useTranslation();
+  const tokens = useQuery(api.apiTokens.list);
+  const [dismissed, setDismissed] = usePersistentState("fomo.agentsHintDismissed", false);
+  if (dismissed || itemCount < 3 || tokens === undefined || tokens.length > 0) return null;
+  return (
+    <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-muted">
+      <Bot size={13} aria-hidden />
+      <span>
+        {t("agents.hint")}{" "}
+        <a href="#/agents" className="underline hover:text-ink">
+          {t("agents.hintLink")}
+        </a>
+      </span>
+      <button className="ml-1 opacity-60 hover:opacity-100" onClick={() => setDismissed(true)} aria-label={t("common.close")}>
+        <X size={12} />
+      </button>
+    </p>
   );
 }

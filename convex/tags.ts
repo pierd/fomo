@@ -49,16 +49,21 @@ export const rename = mutation({
   args: { tagId: v.id("tags"), name: v.string() },
   handler: async (ctx, { tagId, name }) => {
     const userId = await requireUserId(ctx);
-    const tag = await ctx.db.get("tags", tagId);
-    if (tag === null || tag.userId !== userId) fail("notFound");
-    const clean = normalizeTag(name);
-    if (!clean) fail("emptyName");
-    const clash = await ctx.db
-      .query("tags")
-      .withIndex("by_userId_and_name", (q) => q.eq("userId", userId).eq("name", clean))
-      .unique();
-    if (clash !== null && clash._id !== tagId) fail("tagExists", { name: clean });
-    await ctx.db.patch("tags", tagId, { name: clean });
+    await renameTag(ctx, userId, tagId, name);
     return null;
   },
 });
+
+export async function renameTag(ctx: MutationCtx, userId: Id<"users">, tagId: Id<"tags">, name: string) {
+  const tag = await ctx.db.get("tags", tagId);
+  if (tag === null || tag.userId !== userId) fail("notFound");
+  const clean = normalizeTag(name);
+  if (!clean) fail("emptyName");
+  const clash = await ctx.db
+    .query("tags")
+    .withIndex("by_userId_and_name", (q) => q.eq("userId", userId).eq("name", clean))
+    .unique();
+  if (clash !== null && clash._id !== tagId) fail("tagExists", { name: clean });
+  await ctx.db.patch("tags", tagId, { name: clean });
+  return clean;
+}

@@ -54,30 +54,46 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const title = args.title.trim();
-    if (!title) fail("emptyName");
-    const ai = await canUseAi(ctx, userId);
-    if (args.cleanup && !ai) fail("aiLocked");
-    const duration = durationFields(args.duration);
-    const itemId = await ctx.db.insert("items", {
-      userId,
-      title,
-      creator: args.creator?.trim() || undefined,
-      tagIds: await ensureTags(ctx, userId, args.tagNames),
-      description: args.description?.trim() || undefined,
-      durationMode: "unset",
-      ...duration,
-      status: "active",
-      addedAt: Date.now(),
-    });
-    if (args.cleanup || (ai && duration.durationMode === "auto")) {
-      await startCleanup(ctx, itemId, args.cleanup);
-    }
-    return itemId;
+    return await insertItem(ctx, userId, args);
   },
 });
 
-async function startCleanup(ctx: MutationCtx, itemId: Id<"items">, full: boolean) {
+export type NewItem = {
+  title: string;
+  creator?: string;
+  tagNames: string[];
+  description?: string;
+  duration?: string;
+  sourceUrl?: string;
+  cleanup: boolean;
+};
+
+// Shared by the app and the MCP server.
+export async function insertItem(ctx: MutationCtx, userId: Id<"users">, args: NewItem) {
+  const title = args.title.trim();
+  if (!title) fail("emptyName");
+  const ai = await canUseAi(ctx, userId);
+  if (args.cleanup && !ai) fail("aiLocked");
+  const duration = durationFields(args.duration);
+  const itemId = await ctx.db.insert("items", {
+    userId,
+    title,
+    creator: args.creator?.trim() || undefined,
+    tagIds: await ensureTags(ctx, userId, args.tagNames),
+    description: args.description?.trim() || undefined,
+    sourceUrl: args.sourceUrl?.trim() || undefined,
+    durationMode: "unset",
+    ...duration,
+    status: "active",
+    addedAt: Date.now(),
+  });
+  if (args.cleanup || (ai && duration.durationMode === "auto")) {
+    await startCleanup(ctx, itemId, args.cleanup);
+  }
+  return itemId;
+}
+
+export async function startCleanup(ctx: MutationCtx, itemId: Id<"items">, full: boolean) {
   await ctx.db.patch("items", itemId, { aiStatus: "pending", aiError: undefined });
   await ctx.scheduler.runAfter(0, internal.ai.cleanupItem, { itemId, full });
 }
@@ -94,23 +110,47 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const item = await requireOwnItem(ctx, args.itemId);
-    const title = args.title.trim();
-    if (!title) fail("emptyName");
-    const duration = durationFields(args.duration);
-    await ctx.db.patch("items", item._id, {
-      title,
-      creator: args.creator?.trim() || undefined,
+    // The form sends every field: a missing one means "cleared".
+    await patchItem(ctx, item, {
+      title: args.title,
+      creator: args.creator ?? "",
       tagIds: await ensureTags(ctx, item.userId, args.tagNames),
-      description: args.description?.trim() || undefined,
-      sourceUrl: args.sourceUrl?.trim() || undefined,
-      ...duration,
+      description: args.description ?? "",
+      duration: args.duration,
+      sourceUrl: args.sourceUrl ?? "",
     });
-    if (duration.durationMode === "auto" && (await canUseAi(ctx, item.userId))) {
-      await startCleanup(ctx, item._id, false);
-    }
     return null;
   },
 });
+
+export type ItemChanges = {
+  title?: string;
+  creator?: string;
+  tagIds?: Id<"tags">[];
+  description?: string;
+  duration?: string;
+  sourceUrl?: string;
+};
+
+// Applies the given fields (undefined = leave as is, "" = clear). Shared by
+// the app and the MCP server.
+export async function patchItem(ctx: MutationCtx, item: Doc<"items">, changes: ItemChanges) {
+  const patch: Partial<Doc<"items">> = {};
+  if (changes.title !== undefined) {
+    const title = changes.title.trim();
+    if (!title) fail("emptyName");
+    patch.title = title;
+  }
+  if (changes.creator !== undefined) patch.creator = changes.creator.trim() || undefined;
+  if (changes.description !== undefined) patch.description = changes.description.trim() || undefined;
+  if (changes.sourceUrl !== undefined) patch.sourceUrl = changes.sourceUrl.trim() || undefined;
+  if (changes.tagIds !== undefined) patch.tagIds = changes.tagIds;
+  const duration = durationFields(changes.duration);
+  await ctx.db.patch("items", item._id, { ...patch, ...duration });
+  if (duration.durationMode === "auto" && (await canUseAi(ctx, item.userId))) {
+    await startCleanup(ctx, item._id, false);
+  }
+}
 
 export const cleanup = mutation({
   args: { itemId: v.id("items") },
@@ -126,13 +166,17 @@ export const setStatus = mutation({
   args: { itemId: v.id("items"), status: statusValidator },
   handler: async (ctx, { itemId, status }) => {
     await requireOwnItem(ctx, itemId);
-    await ctx.db.patch("items", itemId, {
-      status,
-      finishedAt: status === "active" ? undefined : Date.now(),
-    });
+    await setItemStatus(ctx, itemId, status);
     return null;
   },
 });
+
+export async function setItemStatus(ctx: MutationCtx, itemId: Id<"items">, status: Doc<"items">["status"]) {
+  await ctx.db.patch("items", itemId, {
+    status,
+    finishedAt: status === "active" ? undefined : Date.now(),
+  });
+}
 
 export const setCover = mutation({
   args: { itemId: v.id("items"), storageId: v.union(v.id("_storage"), v.null()) },
@@ -151,7 +195,7 @@ export const generateUploadUrl = mutation({
   },
 });
 
-async function replaceCover(ctx: MutationCtx, item: Doc<"items">, storageId: Id<"_storage"> | undefined) {
+export async function replaceCover(ctx: MutationCtx, item: Doc<"items">, storageId: Id<"_storage"> | undefined) {
   if (item.coverStorageId && item.coverStorageId !== storageId) {
     await ctx.storage.delete(item.coverStorageId);
   }
@@ -162,11 +206,15 @@ export const remove = mutation({
   args: { itemId: v.id("items") },
   handler: async (ctx, { itemId }) => {
     const item = await requireOwnItem(ctx, itemId);
-    if (item.coverStorageId) await ctx.storage.delete(item.coverStorageId);
-    await ctx.db.delete("items", itemId);
+    await deleteItem(ctx, item);
     return null;
   },
 });
+
+export async function deleteItem(ctx: MutationCtx, item: Doc<"items">) {
+  if (item.coverStorageId) await ctx.storage.delete(item.coverStorageId);
+  await ctx.db.delete("items", item._id);
+}
 
 // --- Internal: used by AI cleanup and cover fetching ---
 

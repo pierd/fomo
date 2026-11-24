@@ -86,6 +86,18 @@ export default defineSchema({
     standings: v.optional(v.array(v.object({ itemId: v.id("items"), rank: v.number() }))),
   }).index("by_userId", ["userId"]),
 
+  // Personal tokens for the MCP server (/mcp). Only a SHA-256 hash is kept.
+  apiTokens: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    tokenHash: v.string(),
+    // Last characters of the token, to tell them apart in the list.
+    hint: v.string(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_tokenHash", ["tokenHash"]),
+
   comparisons: defineTable({
     tournamentId: v.id("tournaments"),
     a: v.id("items"),

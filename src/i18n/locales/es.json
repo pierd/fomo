@@ -16,6 +16,7 @@
     "tournaments": "Torneos",
     "import": "Importar",
     "stats": "Estadísticas",
+    "agents": "Agentes de IA",
     "admin": "Admin",
     "signOut": "Cerrar sesión",
     "language": "Idioma"
@@ -47,7 +48,8 @@
     "notesTooLong": "Las notas son demasiado largas. Divídelas (máximo {{max}} caracteres).",
     "tagExists": "La etiqueta «{{name}}» ya existe.",
     "tournamentOver": "Este torneo ya terminó.",
-    "noSuchAccount": "No hay ninguna cuenta con ese correo."
+    "noSuchAccount": "No hay ninguna cuenta con ese correo.",
+    "tooManyTokens": "Tienes demasiados tokens (máximo {{max}}). Revoca uno primero."
   },
   "status": {
     "active": "Pendientes",
@@ -339,6 +341,60 @@
     "nothingLeft": "No queda nada",
     "paceSubYear": "terminaste el equivalente a {{time}} en el último año",
     "paceSubSince": "terminaste el equivalente a {{time}} desde que empezaste ({{span}})"
+  },
+  "agents": {
+    "title": "Agentes de IA",
+    "intro": "Gestiona tu lista desde un asistente de IA: pídele que añada los libros de un artículo, que etiquete cosas, que las marque como hechas o que busque algo corto para ver esta noche. Se conecta mediante MCP y solo puede acceder a tu lista FOMO.",
+    "hint": "Gestiona esta lista desde Claude, ChatGPT u otro asistente de IA.",
+    "hintLink": "Conecta uno",
+    "pick": "¿Qué asistente usas?",
+    "needToken": "Crea un token. Permite al asistente usar tu lista y se rellena en los pasos de abajo.",
+    "create": "Crear token",
+    "tokenReady": "Token creado y rellenado en los pasos de abajo. Solo se muestra esta vez, así que termina la configuración antes de salir de esta página.",
+    "runThis": "Ejecuta esto en una terminal:",
+    "urlSecret": "Esta URL contiene tu token: no la compartas. Puedes revocarlo abajo cuando quieras.",
+    "claude": {
+      "s1": "En Claude (en la web o en la app de escritorio), abre Configuración → Conectores y haz clic en «Añadir conector personalizado».",
+      "s2": "Llámalo FOMO y pega esto como URL:",
+      "s3": "Haz clic en «Añadir». Luego, en un chat, activa FOMO en el menú de herramientas."
+    },
+    "chatgpt": {
+      "s1": "En ChatGPT, abre Configuración → Apps y conectores → Configuración avanzada y activa el modo desarrollador. (No está disponible en todos los planes).",
+      "s2": "De vuelta en Apps y conectores, haz clic en «Crear». Llámalo FOMO, elige «Sin autenticación» y pega esto como URL del servidor MCP:",
+      "s3": "Confirma que confías en la app y haz clic en «Crear». Luego, en un chat, añade FOMO desde el menú +."
+    },
+    "claudeCode": {
+      "s2": "Inicia Claude Code y comprueba que /mcp muestra fomo como conectado."
+    },
+    "codex": {
+      "s1": "Guarda el token en una variable de entorno (añade esta línea al perfil de tu shell, p. ej. ~/.zshrc, para que se mantenga):",
+      "s2": "Después añade el servidor:"
+    },
+    "gemini": {
+      "s2": "Inicia Gemini CLI y comprueba que /mcp muestra fomo."
+    },
+    "cursor": {
+      "s1": "Abre Cursor Settings → Tools & MCP → «New MCP Server» (abre ~/.cursor/mcp.json) y añade:"
+    },
+    "vscode": {
+      "s1": "Ejecuta «MCP: Open User Configuration» desde la paleta de comandos y añade:",
+      "s2": "Inicia el servidor desde ese archivo y usa FOMO en el modo agente de Copilot Chat."
+    },
+    "other": {
+      "name": "Otro",
+      "s1": "Sirve cualquier cliente que admita servidores MCP remotos (Streamable HTTP). URL del servidor:",
+      "s2": "Envía el token en esta cabecera:",
+      "s3": "Si el cliente no puede enviar cabeceras, usa esta URL:"
+    },
+    "tryAsking": "Luego prueba: «Añade a mi lista FOMO los libros de este artículo» o «¿Qué películas cortas me quedan por ver?»",
+    "tokens": "Tokens",
+    "tokensIntro": "Quien tenga un token puede cambiar tu lista. Revoca los que ya no uses.",
+    "created": "creado el {{date}}",
+    "lastUsed": "último uso el {{date}}",
+    "neverUsed": "nunca usado",
+    "revoke": "Revocar",
+    "revokeConfirm": "¿Revocar «{{name}}»? Los asistentes que lo usen perderán el acceso.",
+    "copy": "Copiar"
   },
   "admin": {
     "intro": "Las funciones de IA (ordenar, estimar tiempos, leer notas) están bloqueadas hasta que se desbloqueen aquí.",

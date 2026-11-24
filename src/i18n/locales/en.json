@@ -16,6 +16,7 @@
     "tournaments": "Tournaments",
     "import": "Import",
     "stats": "Stats",
+    "agents": "AI agents",
     "admin": "Admin",
     "signOut": "Sign out",
     "language": "Language"
@@ -47,7 +48,8 @@
     "notesTooLong": "The notes are too long. Split them up (at most {{max}} characters).",
     "tagExists": "The tag “{{name}}” already exists.",
     "tournamentOver": "This tournament is over.",
-    "noSuchAccount": "There's no account with that email."
+    "noSuchAccount": "There's no account with that email.",
+    "tooManyTokens": "You have too many tokens (at most {{max}}). Revoke one first."
   },
   "status": {
     "active": "To do",
@@ -317,6 +319,60 @@
     "nothingLeft": "Nothing left",
     "paceSubYear": "you finished {{time}} worth in the last year",
     "paceSubSince": "you finished {{time}} worth since you started ({{span}})"
+  },
+  "agents": {
+    "title": "AI agents",
+    "intro": "Manage your list from an AI assistant: ask it to add the books from an article, tag things, mark them done, or find something short to watch tonight. It connects through MCP and can only reach your FOMO list.",
+    "hint": "Manage this list from Claude, ChatGPT or another AI assistant.",
+    "hintLink": "Connect one",
+    "pick": "Which assistant do you use?",
+    "needToken": "Create a token. It lets the assistant use your list, and it's filled into the steps below.",
+    "create": "Create token",
+    "tokenReady": "Token created and filled into the steps below. It's shown only this once, so finish the setup before leaving this page.",
+    "runThis": "Run this in a terminal:",
+    "urlSecret": "This URL contains your token: keep it private. You can revoke it below at any time.",
+    "claude": {
+      "s1": "In Claude (on the web or in the desktop app), open Settings → Connectors and click “Add custom connector”.",
+      "s2": "Name it FOMO and paste this as the URL:",
+      "s3": "Click “Add”. Then, in a chat, turn FOMO on in the tools menu."
+    },
+    "chatgpt": {
+      "s1": "In ChatGPT, open Settings → Apps & Connectors → Advanced settings and turn on Developer mode. (It isn't available on every plan.)",
+      "s2": "Back in Apps & Connectors, click “Create”. Name it FOMO, choose “No authentication”, and paste this as the MCP server URL:",
+      "s3": "Confirm that you trust the app and click “Create”. Then, in a chat, add FOMO from the + menu."
+    },
+    "claudeCode": {
+      "s2": "Start Claude Code and check that /mcp shows fomo as connected."
+    },
+    "codex": {
+      "s1": "Keep the token in an environment variable (add this line to your shell profile, e.g. ~/.zshrc, so it stays):",
+      "s2": "Then add the server:"
+    },
+    "gemini": {
+      "s2": "Start Gemini CLI and check that /mcp lists fomo."
+    },
+    "cursor": {
+      "s1": "Open Cursor Settings → Tools & MCP → “New MCP Server” (it opens ~/.cursor/mcp.json) and add:"
+    },
+    "vscode": {
+      "s1": "Run “MCP: Open User Configuration” from the Command Palette and add:",
+      "s2": "Start the server from that file, then use FOMO in Copilot Chat's agent mode."
+    },
+    "other": {
+      "name": "Other",
+      "s1": "Any client that supports remote MCP servers (Streamable HTTP) works. Server URL:",
+      "s2": "Send the token in this header:",
+      "s3": "If the client can't send headers, use this URL instead:"
+    },
+    "tryAsking": "Then try: “Add the books from this article to my FOMO list” or “Which short movies do I still have to watch?”",
+    "tokens": "Tokens",
+    "tokensIntro": "Anyone with a token can change your list. Revoke the ones you no longer use.",
+    "created": "created {{date}}",
+    "lastUsed": "last used {{date}}",
+    "neverUsed": "never used",
+    "revoke": "Revoke",
+    "revokeConfirm": "Revoke “{{name}}”? Assistants using it will lose access.",
+    "copy": "Copy"
   },
   "admin": {
     "intro": "AI features (clean-up, time estimates, reading notes) are locked until unlocked here.",

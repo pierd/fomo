@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as ai from "../ai.js";
+import type * as apiTokens from "../apiTokens.js";
 import type * as auth from "../auth.js";
 import type * as covers from "../covers.js";
 import type * as http from "../http.js";
@@ -20,8 +21,10 @@ import type * as lib_covers from "../lib/covers.js";
 import type * as lib_duration from "../lib/duration.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_locales from "../lib/locales.js";
+import type * as lib_mcpProtocol from "../lib/mcpProtocol.js";
 import type * as lib_ranking from "../lib/ranking.js";
 import type * as lib_tags from "../lib/tags.js";
+import type * as mcp from "../mcp.js";
 import type * as tags from "../tags.js";
 import type * as tournaments from "../tournaments.js";
 
@@ -34,6 +37,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   ai: typeof ai;
+  apiTokens: typeof apiTokens;
   auth: typeof auth;
   covers: typeof covers;
   http: typeof http;
@@ -44,8 +48,10 @@ declare const fullApi: ApiFromModules<{
   "lib/duration": typeof lib_duration;
   "lib/errors": typeof lib_errors;
   "lib/locales": typeof lib_locales;
+  "lib/mcpProtocol": typeof lib_mcpProtocol;
   "lib/ranking": typeof lib_ranking;
   "lib/tags": typeof lib_tags;
+  mcp: typeof mcp;
   tags: typeof tags;
   tournaments: typeof tournaments;
 }>;

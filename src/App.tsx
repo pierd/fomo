@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { BarChart3, List, LogOut, Shield, Swords, Upload } from "lucide-react";
+import { BarChart3, Bot, List, LogOut, Shield, Swords, Upload } from "lucide-react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { SignIn } from "./SignIn";
@@ -13,6 +13,7 @@ import { TournamentPage } from "./pages/TournamentPage";
 import { ImportPage } from "./pages/ImportPage";
 import { StatsPage } from "./pages/StatsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AgentsPage } from "./pages/AgentsPage";
 import { LocalePicker } from "./i18n/LocalePicker";
 import { currentLocale } from "./i18n";
 
@@ -80,6 +81,14 @@ function Main() {
         </nav>
         <div className="ml-auto flex items-center gap-2 text-sm text-muted">
           <span className="hidden truncate md:inline">{me?.email}</span>
+          <a
+            href="#/agents"
+            className={`btn btn-ghost p-1.5 ${section === "agents" ? "text-ink" : ""}`}
+            title={t("nav.agents")}
+            aria-label={t("nav.agents")}
+          >
+            <Bot size={16} />
+          </a>
           <LocalePicker signedIn />
           <button
             className="btn btn-ghost p-1.5"
@@ -102,6 +111,8 @@ function Main() {
           <ImportPage items={items} tags={tags} aiEnabled={aiEnabled} />
         ) : section === "stats" ? (
           <StatsPage items={items} tags={tags} now={now} />
+        ) : section === "agents" ? (
+          <AgentsPage />
         ) : section === "admin" && me?.isAdmin ? (
           <AdminPage />
         ) : (
