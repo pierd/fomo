@@ -75,6 +75,34 @@ describe("flows", () => {
     expect(second.tournament.status).toBe("completed");
   });
 
+  it("pools answers from tournaments and duels, without imported copies", async () => {
+    const { t, as } = await setup();
+    const add = (title: string) => as.mutation(api.items.create, { title, tagNames: [], cleanup: false });
+    const [a, b] = [await add("A"), await add("B")];
+    const t1 = await as.mutation(api.tournaments.create, { tagIds: [], importFrom: [] });
+    await as.mutation(api.tournaments.record, { tournamentId: t1, a, b, result: "a" });
+    await as.mutation(api.tournaments.create, { tagIds: [], importFrom: [t1] });
+    expect(await as.query(api.duels.answers, {})).toHaveLength(1);
+
+    const duelId = await as.mutation(api.duels.record, { a: b, b: a, result: "a" });
+    const pool = await as.query(api.duels.answers, {});
+    expect(pool).toHaveLength(2);
+    expect(pool[0]).toMatchObject({ a: b, b: a, result: "a" });
+    await as.mutation(api.duels.remove, { duelId });
+
+    // With the original gone, the imported copy still counts, as the oldest.
+    await as.mutation(api.tournaments.remove, { tournamentId: t1 });
+    expect(await as.query(api.duels.answers, {})).toMatchObject([{ at: 0 }]);
+
+    // Other users can't see, add to or undo someone's duels.
+    const mine = await as.mutation(api.duels.record, { a, b, result: "draw" });
+    const otherId = await t.run((ctx) => ctx.db.insert("users", { email: "b@example.com" }));
+    const other = t.withIdentity({ subject: `${otherId}|x` });
+    expect(await other.query(api.duels.answers, {})).toEqual([]);
+    await expect(other.mutation(api.duels.record, { a, b, result: "a" })).rejects.toThrow(/notFound/);
+    await expect(other.mutation(api.duels.remove, { duelId: mine })).rejects.toThrow(/notFound/);
+  });
+
   it("commits imports", async () => {
     const { as } = await setup();
     await as.mutation(api.imports.commit, {

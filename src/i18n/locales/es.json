@@ -136,6 +136,7 @@
   },
   "list": {
     "sortBy": "Ordenar por",
+    "sortRanking": "Clasificación",
     "sortAdded": "Añadidos recientemente",
     "sortFinished": "Terminados recientemente",
     "add": "Añadir",
@@ -188,7 +189,7 @@
     "skippedConflicts_other": "{{count}} conflictos ignorados",
     "start": "Empezar",
     "delete": "Eliminar el torneo",
-    "confirmDelete": "¿Eliminar el torneo «{{name}}»?"
+    "confirmDelete": "¿Eliminar el torneo «{{name}}»? Sus respuestas dejarán de contar en tu clasificación."
   },
   "play": {
     "ruledOut": "{{ruledOut}} de {{total}} ya no pueden entrar en el top 4",
@@ -417,5 +418,26 @@
     "years_one": "{{n}} año",
     "years_many": "{{n}} años",
     "years_other": "{{n}} años"
+  },
+  "rank": {
+    "sharpen": "Afinar los primeros puestos",
+    "sharpenHint": "Responde unas preguntas para que los primeros puestos sean más exactos",
+    "sharpenIntro": "Las preguntas más útiles sobre los primeros puestos de tu clasificación. Para cuando quieras.",
+    "place": "Encontrar su puesto",
+    "placeTitle": "¿Qué puesto le corresponde a «{{title}}»?",
+    "notRanked": "aún sin clasificar",
+    "among": "Entre",
+    "everything": "todo",
+    "confirmed": "{{n}} de los {{total}} primeros puestos confirmados",
+    "allConfirmed": "Los primeros puestos son exactos. Nada más podría ocuparlos.",
+    "result": "N.º {{rank}} de {{total}}",
+    "again": "Volver a buscar su puesto",
+    "refine": "Comprobar mejor",
+    "currentTop": "Los primeros ahora mismo",
+    "certain": "confirmado",
+    "tooFew": "Aquí no hay nada con qué compararlo.",
+    "left_one": "queda como máximo {{count}} pregunta",
+    "left_many": "quedan como máximo {{count}} preguntas",
+    "left_other": "quedan como máximo {{count}} preguntas"
   }
 }

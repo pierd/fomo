@@ -20,6 +20,12 @@ next. Live at https://fomo.lessismore.studio.
   frontend: results are a partial order closed under transitivity, draws merge
   items, only undecided pairs are asked, and it ends when the top 4 are fully
   ordered.
+- Global ranking (`convex/lib/globalRanking.ts`): every original answer from
+  tournaments and from `duels` goes into one partial order, newest first (newer
+  answers win contradictions); strength scores fitted to it (Bradley-Terry)
+  order the rest. Computed in the frontend, never stored. The rank page
+  (`#/rank`, `#/rank/<itemId>`) sharpens the top or places one item by binary
+  search, among the items with the list's selected tags.
 - Agents: an MCP server at `<deployment>.convex.site/mcp` (`convex/mcp.ts`,
   protocol in `convex/lib/mcpProtocol.ts`): stateless Streamable HTTP, tools
   to list/add/update/delete items, set covers from a URL and list/rename tags. Agents authenticate

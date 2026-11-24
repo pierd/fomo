@@ -86,6 +86,14 @@ export default defineSchema({
     standings: v.optional(v.array(v.object({ itemId: v.id("items"), rank: v.number() }))),
   }).index("by_userId", ["userId"]),
 
+  // Answers given outside tournaments, to improve the global ranking.
+  duels: defineTable({
+    userId: v.id("users"),
+    a: v.id("items"),
+    b: v.id("items"),
+    result: resultValidator,
+  }).index("by_userId", ["userId"]),
+
   // Personal tokens for the MCP server (/mcp). Only a SHA-256 hash is kept.
   apiTokens: defineTable({
     userId: v.id("users"),

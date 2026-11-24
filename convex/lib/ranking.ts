@@ -17,9 +17,9 @@ export const TOP_K = 4;
 export class Ranking<Id extends string = string> {
   readonly ids: Id[];
   private index = new Map<Id, number>();
-  private above: Set<number>[];
-  private below: Set<number>[];
-  private eq: Set<number>[];
+  readonly above: Set<number>[];
+  readonly below: Set<number>[];
+  readonly eq: Set<number>[];
   // Direct comparisons per item (asked or imported), to spread questions.
   readonly direct: number[];
 

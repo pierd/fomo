@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Clock, Equal, Trash2, Trophy, Undo2 } from "lucide-react";
+import { ArrowLeft, Trash2, Trophy, Undo2 } from "lucide-react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { buildBracket, buildRanking, hashString, type Bracket, type Result } from "../../convex/lib/ranking";
 import { useTranslation } from "react-i18next";
-import { errorMessage, formatDate, formatMinutes } from "../lib/format";
+import { errorMessage, formatDate } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/Cover";
+import { Duel } from "../components/Duel";
 
 type Data = NonNullable<FunctionReturnType<typeof api.tournaments.get>>;
 type TItem = Data["items"][number];
@@ -63,21 +64,6 @@ function TournamentView({ data }: { data: Data }) {
     });
   };
 
-  useEffect(() => {
-    if (tournament.status !== "active") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "ArrowLeft") answer("a");
-      else if (e.key === "ArrowRight") answer("b");
-      else if (e.key === "ArrowDown" || e.key === "=") answer("draw");
-      else if (e.key === "z" || e.key === "Backspace") doUndo();
-      else return;
-      e.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
   return (
     <div className="space-y-6">
       <div>
@@ -112,29 +98,14 @@ function TournamentView({ data }: { data: Data }) {
               />
             </div>
           </div>
-          <p className="text-center text-sm text-muted">{t("play.question")}</p>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 sm:gap-4">
-            <Contender item={byId.get(pair[0])!} onPick={() => answer("a")} disabled={pending} hint="←" />
-            <div className="flex flex-col items-center justify-center">
-              <button
-                className="btn h-12 w-12 rounded-full p-0"
-                onClick={() => answer("draw")}
-                disabled={pending}
-                title={t("play.drawHint")}
-                aria-label={t("play.draw")}
-              >
-                <Equal size={20} />
-              </button>
-            </div>
-            <Contender item={byId.get(pair[1])!} onPick={() => answer("b")} disabled={pending} hint="→" />
-          </div>
-          <div className="flex items-center justify-center gap-3 text-xs text-muted">
-            <button className="btn btn-ghost text-xs" onClick={doUndo} disabled={!canUndo || pending}>
-              <Undo2 size={14} /> {t("play.undo")}
-            </button>
-            <span className="hidden sm:inline">{t("play.keys")}</span>
-          </div>
-          {error && <p className="text-center text-sm text-red-600">{error}</p>}
+          <Duel
+            a={byId.get(pair[0])!}
+            b={byId.get(pair[1])!}
+            pending={pending}
+            error={error}
+            onAnswer={answer}
+            onUndo={canUndo ? doUndo : undefined}
+          />
         </div>
       ) : (
         <Results data={data} byId={byId} ranking={ranking} onUndo={canUndo ? doUndo : undefined} />
@@ -153,41 +124,6 @@ function TournamentView({ data }: { data: Data }) {
         </button>
       </div>
     </div>
-  );
-}
-
-function Contender({
-  item,
-  onPick,
-  disabled,
-  hint,
-}: {
-  item: TItem;
-  onPick: () => void;
-  disabled: boolean;
-  hint: string;
-}) {
-  return (
-    <button
-      className="card group flex flex-col items-center gap-3 p-3 text-center transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md disabled:opacity-60 sm:p-5"
-      onClick={onPick}
-      disabled={disabled}
-    >
-      <Cover item={item} className="aspect-[2/3] w-full max-w-40" />
-      <div>
-        <div className="leading-snug font-semibold sm:text-lg">{item.title}</div>
-        {item.creator && <div className="text-sm text-muted">{item.creator}</div>}
-        <div className="mt-1 flex items-center justify-center gap-2 text-xs text-muted">
-          {item.year && <span>{item.year}</span>}
-          {item.durationMinutes !== undefined && (
-            <span className="inline-flex items-center gap-1">
-              <Clock size={11} /> {formatMinutes(item.durationMinutes)}
-            </span>
-          )}
-        </div>
-      </div>
-      <span className="hidden text-xs text-muted opacity-0 group-hover:opacity-100 sm:inline">{hint}</span>
-    </button>
   );
 }
 

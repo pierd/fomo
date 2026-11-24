@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import Fuse from "fuse.js";
-import { Bot, Plus, Search, Tag as TagIcon, X } from "lucide-react";
+import { Bot, ListOrdered, Plus, Search, Tag as TagIcon, X } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import type { Item, Status, Tag } from "../lib/types";
+import type { Item, Ranked, Status, Tag } from "../lib/types";
 import { useTranslation } from "react-i18next";
 import { formatMinutes } from "../lib/format";
 import { ItemCard } from "../components/ItemCard";
@@ -11,15 +11,29 @@ import { ItemForm } from "../components/ItemForm";
 import { usePersistentState } from "../lib/usePersistentState";
 
 type StatusFilter = Status | "all";
-type SortKey = "added" | "finished";
+type SortKey = "ranking" | "added" | "finished";
+
+// How many items get their place shown: further down it's too rough.
+const SHOWN_RANKS = 10;
 
 const STATUS_TABS: StatusFilter[] = ["active", "done", "discarded", "all"];
 
-export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag[]; aiEnabled: boolean }) {
+export function ItemsPage({
+  items,
+  tags,
+  ranking,
+  aiEnabled,
+}: {
+  items: Item[];
+  tags: Tag[];
+  ranking: Ranked;
+  aiEnabled: boolean;
+}) {
   const { t } = useTranslation();
   const [status, setStatus] = usePersistentState<StatusFilter>("fomo.status", "active");
   const [selectedTags, setSelectedTags] = usePersistentState<string[]>("fomo.tags", []);
   const [sort, setSort] = usePersistentState<SortKey>("fomo.sort", "added");
+  const [activeSort, setActiveSort] = usePersistentState<SortKey>("fomo.sortActive", "ranking");
   const [search, setSearch] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [form, setForm] = useState<{ mode: "add" } | { mode: "edit"; itemId: Item["_id"] } | null>(null);
@@ -28,7 +42,7 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
   const namesOf = (item: Item) => item.tagIds.flatMap((id) => tagName.get(id) ?? []);
   // Drop selections of tags that were renamed or no longer exist.
   const activeTags = selectedTags.filter((tag) => tags.some((x) => x.name === tag));
-  const effectiveSort: SortKey = status === "active" ? "added" : sort;
+  const effectiveSort = status === "active" ? activeSort : sort;
 
   const filtered = useMemo(() => {
     const out = items.filter(
@@ -41,8 +55,20 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
     } else {
       out.sort((a, b) => b.addedAt - a.addedAt);
     }
-    return out;
-  }, [items, status, activeTags, tagName, effectiveSort]);
+    return effectiveSort === "ranking" ? ranking.sort(out, (i) => i._id) : out;
+  }, [items, status, activeTags, tagName, effectiveSort, ranking]);
+  // Places within what's filtered (the search doesn't change them).
+  const ranks = useMemo(
+    () => (effectiveSort === "ranking" ? ranking.ranks(filtered.map((i) => i._id)) : null),
+    [effectiveSort, ranking, filtered],
+  );
+  const anyRanked = filtered.some((i) => ranking.isRanked(i._id));
+  const rankOf = (item: Item) => {
+    const rank = ranks?.get(item._id);
+    return rank !== undefined && rank <= SHOWN_RANKS && ranking.score(item._id) > 0 ? rank : undefined;
+  };
+  // "Find its place" needs something to compare with.
+  const canPlace = status === "active" && filtered.length > 1;
 
   const fuse = useMemo(
     () =>
@@ -100,16 +126,20 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
             </button>
           ))}
         </div>
-        {status !== "active" && (
-          <select
-            className="input w-auto py-1.5"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            aria-label={t("list.sortBy")}
-          >
-            <option value="added">{t("list.sortAdded")}</option>
-            <option value="finished">{t("list.sortFinished")}</option>
-          </select>
+        <select
+          className="input w-auto py-1.5"
+          value={effectiveSort}
+          onChange={(e) => (status === "active" ? setActiveSort : setSort)(e.target.value as SortKey)}
+          aria-label={t("list.sortBy")}
+        >
+          <option value="ranking">{t("list.sortRanking")}</option>
+          <option value="added">{t("list.sortAdded")}</option>
+          {status !== "active" && <option value="finished">{t("list.sortFinished")}</option>}
+        </select>
+        {canPlace && effectiveSort === "ranking" && (
+          <a className="btn" href="#/rank" title={t("rank.sharpenHint")}>
+            <ListOrdered size={16} /> {t("rank.sharpen")}
+          </a>
         )}
         <button className="btn btn-primary ml-auto px-4" onClick={() => setForm({ mode: "add" })}>
           <Plus size={16} /> {t("list.add")}
@@ -190,6 +220,9 @@ export function ItemsPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag
               item={item}
               tagNames={namesOf(item)}
               selectedTags={activeTags}
+              rank={rankOf(item)}
+              canPlace={canPlace}
+              unranked={ranks !== null && canPlace && anyRanked && !ranking.isRanked(item._id)}
               onEdit={() => setForm({ mode: "edit", itemId: item._id })}
               onTagClick={toggleTag}
             />

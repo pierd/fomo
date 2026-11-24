@@ -1,5 +1,5 @@
 import { useMutation } from "convex/react";
-import { Check, Clock, ExternalLink, Loader2, Pencil, RotateCcw, X } from "lucide-react";
+import { Check, Clock, ExternalLink, ListOrdered, Loader2, Pencil, RotateCcw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
 import type { Item } from "../lib/types";
@@ -12,12 +12,20 @@ export function ItemCard({
   onEdit,
   onTagClick,
   selectedTags,
+  rank,
+  canPlace,
+  unranked,
 }: {
   item: Item;
   tagNames: string[];
   onEdit: () => void;
   onTagClick: (tag: string) => void;
   selectedTags: string[];
+  // Its place in the ranking, when worth showing.
+  rank?: number;
+  canPlace: boolean;
+  // Never compared with anything, in a list sorted by ranking.
+  unranked: boolean;
 }) {
   const { t } = useTranslation();
   const setStatus = useMutation(api.items.setStatus);
@@ -30,6 +38,15 @@ export function ItemCard({
         <div className="flex items-start gap-2">
           <button onClick={onEdit} className="min-w-0 flex-1 text-left">
             <h3 className="leading-snug font-semibold">
+              {rank !== undefined && (
+                <span
+                  className={`mr-1.5 inline-block rounded-full px-1.5 text-xs leading-5 font-bold ${
+                    rank === 1 ? "bg-amber-400 text-amber-950" : "bg-sunken"
+                  }`}
+                >
+                  #{rank}
+                </span>
+              )}
               {item.title}
               {item.year && <span className="ml-1 font-normal text-muted">({item.year})</span>}
             </h3>
@@ -62,6 +79,16 @@ export function ItemCard({
                 <RotateCcw size={16} />
               </button>
             )}
+            {canPlace && (
+              <a
+                className="btn btn-ghost p-1.5"
+                href={`#/rank/${item._id}`}
+                title={t("rank.place")}
+                aria-label={t("rank.place")}
+              >
+                <ListOrdered size={16} />
+              </a>
+            )}
             <button className="btn btn-ghost p-1.5" title={t("item.edit")} onClick={onEdit}>
               <Pencil size={16} />
             </button>
@@ -88,6 +115,11 @@ export function ItemCard({
               {t}
             </button>
           ))}
+          {unranked && (
+            <a href={`#/rank/${item._id}`} className="underline decoration-dotted hover:text-ink" title={t("rank.place")}>
+              {t("rank.notRanked")}
+            </a>
+          )}
           {item.sourceUrl && (
             <a
               href={item.sourceUrl}

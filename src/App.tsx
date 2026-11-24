@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { BarChart3, Bot, List, LogOut, Shield, Swords, Upload } from "lucide-react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
+import { GlobalRanking } from "../convex/lib/globalRanking";
 import { SignIn } from "./SignIn";
 import { useRoute } from "./lib/router";
 import { ItemsPage } from "./pages/ItemsPage";
 import { TournamentsPage } from "./pages/TournamentsPage";
+import { RankPage } from "./pages/RankPage";
 import { TournamentPage } from "./pages/TournamentPage";
 import { ImportPage } from "./pages/ImportPage";
 import { StatsPage } from "./pages/StatsPage";
@@ -39,6 +41,8 @@ function Main() {
   const me = useQuery(api.admin.me);
   const items = useQuery(api.items.list);
   const tags = useQuery(api.tags.list);
+  const answers = useQuery(api.duels.answers);
+  const ranking = useMemo(() => answers && new GlobalRanking(answers), [answers]);
   const { signOut } = useAuthActions();
   const { t } = useTranslation();
   const setLocale = useMutation(api.admin.setLocale);
@@ -57,7 +61,7 @@ function Main() {
     ...(me?.isAdmin ? [{ path: "admin", label: t("nav.admin"), icon: Shield }] : []),
   ];
   const section = route[0] ?? "";
-  const loaded = me !== undefined && items !== undefined && tags !== undefined;
+  const loaded = me !== undefined && items !== undefined && tags !== undefined && ranking !== undefined;
   const aiEnabled = me?.aiEnabled ?? false;
 
   return (
@@ -107,6 +111,8 @@ function Main() {
           <TournamentPage key={route[1]} tournamentId={route[1] as Id<"tournaments">} />
         ) : section === "tournaments" ? (
           <TournamentsPage tags={tags} items={items} />
+        ) : section === "rank" ? (
+          <RankPage key={route[1] ?? ""} itemId={route[1]} items={items} tags={tags} ranking={ranking} />
         ) : section === "import" ? (
           <ImportPage items={items} tags={tags} aiEnabled={aiEnabled} />
         ) : section === "stats" ? (
@@ -116,7 +122,7 @@ function Main() {
         ) : section === "admin" && me?.isAdmin ? (
           <AdminPage />
         ) : (
-          <ItemsPage items={items} tags={tags} aiEnabled={aiEnabled} />
+          <ItemsPage items={items} tags={tags} ranking={ranking} aiEnabled={aiEnabled} />
         )}
       </main>
     </div>

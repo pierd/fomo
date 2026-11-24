@@ -132,6 +132,7 @@
   },
   "list": {
     "sortBy": "Sort by",
+    "sortRanking": "Ranking",
     "sortAdded": "Newest added",
     "sortFinished": "Recently finished",
     "add": "Add",
@@ -178,7 +179,7 @@
     "skippedConflicts_other": "{{count}} conflicts skipped",
     "start": "Start",
     "delete": "Delete tournament",
-    "confirmDelete": "Delete the tournament “{{name}}”?"
+    "confirmDelete": "Delete the tournament “{{name}}”? Its answers will no longer count in your ranking."
   },
   "play": {
     "ruledOut": "{{ruledOut}} of {{total}} out of the running for the top 4",
@@ -391,5 +392,25 @@
     "months_other": "{{n}} months",
     "years_one": "{{n}} year",
     "years_other": "{{n}} years"
+  },
+  "rank": {
+    "sharpen": "Sharpen the top",
+    "sharpenHint": "Answer a few questions to make the top of the ranking more exact",
+    "sharpenIntro": "The most useful questions about the top of your ranking. Stop whenever you like.",
+    "place": "Find its place",
+    "placeTitle": "Where does “{{title}}” belong?",
+    "notRanked": "not ranked yet",
+    "among": "Among",
+    "everything": "everything",
+    "confirmed": "Top {{n}} of {{total}} confirmed",
+    "allConfirmed": "The top of your ranking is exact. Nothing else could take these places.",
+    "result": "#{{rank}} of {{total}}",
+    "again": "Place it again",
+    "refine": "Check more closely",
+    "currentTop": "The top right now",
+    "certain": "confirmed",
+    "tooFew": "There's nothing to compare it with here.",
+    "left_one": "at most {{count}} question left",
+    "left_other": "at most {{count}} questions left"
   }
 }

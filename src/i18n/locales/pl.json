@@ -140,6 +140,7 @@
   },
   "list": {
     "sortBy": "Sortuj według",
+    "sortRanking": "Ranking",
     "sortAdded": "Ostatnio dodane",
     "sortFinished": "Ostatnio ukończone",
     "add": "Dodaj",
@@ -198,7 +199,7 @@
     "skippedConflicts_other": "pominięto {{count}} konfliktów",
     "start": "Zacznij",
     "delete": "Usuń turniej",
-    "confirmDelete": "Usunąć turniej „{{name}}”?"
+    "confirmDelete": "Usunąć turniej „{{name}}”? Jego odpowiedzi przestaną się liczyć w rankingu."
   },
   "play": {
     "ruledOut": "{{ruledOut}} z {{total}} poza walką o pierwszą czwórkę",
@@ -443,5 +444,27 @@
     "years_few": "{{n}} lata",
     "years_many": "{{n}} lat",
     "years_other": "{{n}} roku"
+  },
+  "rank": {
+    "sharpen": "Doprecyzuj czołówkę",
+    "sharpenHint": "Odpowiedz na kilka pytań, żeby czołówka rankingu była dokładniejsza",
+    "sharpenIntro": "Najbardziej przydatne pytania o czołówkę rankingu. Możesz przestać w każdej chwili.",
+    "place": "Znajdź miejsce w rankingu",
+    "placeTitle": "Które miejsce zajmuje „{{title}}”?",
+    "notRanked": "jeszcze bez miejsca",
+    "among": "Wśród",
+    "everything": "wszystkich pozycji",
+    "confirmed": "Potwierdzone miejsca w czołówce: {{n}} z {{total}}",
+    "allConfirmed": "Czołówka rankingu jest dokładna. Nic innego nie może zająć tych miejsc.",
+    "result": "{{rank}}. miejsce z {{total}}",
+    "again": "Ustal miejsce od nowa",
+    "refine": "Sprawdź dokładniej",
+    "currentTop": "Obecna czołówka",
+    "certain": "potwierdzone",
+    "tooFew": "Nie ma tu z czym porównać.",
+    "left_one": "zostało najwyżej {{count}} pytanie",
+    "left_few": "zostały najwyżej {{count}} pytania",
+    "left_many": "zostało najwyżej {{count}} pytań",
+    "left_other": "zostało najwyżej {{count}} pytania"
   }
 }
