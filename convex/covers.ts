@@ -10,15 +10,20 @@ export const hintsValidator = v.object({
   kind: v.optional(v.string()),
   isbn: v.optional(v.string()),
   wikipediaTitle: v.optional(v.string()),
+  coverUrl: v.optional(v.string()),
   sourceUrl: v.optional(v.string()),
 });
 
 export const fetchCover = internalAction({
   args: { itemId: v.id("items"), hints: hintsValidator },
   handler: async (ctx, { itemId, hints }) => {
-    const url = await findCoverUrl(hints);
-    if (url === null) return null;
-    const blob = await downloadImage(url);
+    const { coverUrl, ...rest } = hints;
+    let blob = coverUrl ? await downloadImage(coverUrl) : null;
+    if (blob === null) {
+      const url = await findCoverUrl(rest);
+      if (url === null) return null;
+      blob = await downloadImage(url);
+    }
     if (blob === null) return null;
     const storageId = await ctx.storage.store(blob);
     await ctx.runMutation(internal.items.storeCover, { itemId, storageId });

@@ -49,7 +49,13 @@
     "tagExists": "The tag “{{name}}” already exists.",
     "tournamentOver": "This tournament is over.",
     "noSuchAccount": "There's no account with that email.",
-    "tooManyTokens": "You have too many tokens (at most {{max}}). Revoke one first."
+    "tooManyTokens": "You have too many tokens (at most {{max}}). Revoke one first.",
+    "steamNotConfigured": "Steam imports aren't set up on this server yet.",
+    "steamBadProfile": "That doesn't look like a Steam profile. Paste its link.",
+    "steamNoProfile": "There's no Steam profile with that name.",
+    "steamPrivate": "Steam won't show this library. Make “Game details” public and try again.",
+    "steamUnavailable": "Steam isn't answering. Try again later.",
+    "steamWishlistUnavailable": "Couldn't load the wishlist. Try again, or untick it to import only your library."
   },
   "status": {
     "active": "To do",
@@ -251,7 +257,55 @@
       "text": [
         "Paste a list, one item per line. “Title by Author” and “Title - Author” are understood; bullets and numbers are stripped.",
         "Got messy notes instead? Use “Read with AI” to pick out what's in them."
+      ],
+      "steam": [
+        "On Steam, open Profile → Edit Profile → Privacy Settings and make “My profile” and “Game details” public. You can change them back after the import.",
+        "Paste the link to your profile below.",
+        "Pick the games you want on your list. Nothing is picked to start with."
+      ],
+      "csv": [
+        "Export your library or list from any app as a CSV file with a header row. For example, Playnite (Windows) can gather Epic, GOG and console libraries and export them with an extension.",
+        "Choose the file below and say which column is what."
       ]
+    },
+    "csvSource": "Any CSV file",
+    "fromProfile": "From your public profile, no login needed",
+    "fromMapped": "Say which column is what",
+    "steam": {
+      "profile": "Steam profile",
+      "load": "Load games",
+      "wishlist": "Include my wishlist"
+    },
+    "csv": {
+      "intro": "Which column is what? Only the name is needed.",
+      "noColumn": "(none)",
+      "unit": "Unit",
+      "units": {
+        "minutes": "minutes",
+        "hours": "hours",
+        "seconds": "seconds"
+      },
+      "example": "e.g. {{value}}",
+      "dateOrder": "Dates like 03/04/2023 are",
+      "dmy": "day/month/year",
+      "mdy": "month/day/year",
+      "statuses": "What do the statuses mean?",
+      "optIn": "Start with nothing picked (for big libraries)",
+      "review": "Review",
+      "fields": {
+        "title": "Name",
+        "creator": "By",
+        "year": "Year",
+        "tags": "Tags",
+        "status": "Status",
+        "duration": "Time to finish",
+        "played": "Time played",
+        "addedAt": "Date added",
+        "finishedAt": "Date finished",
+        "source": "Source",
+        "sourceUrl": "Link",
+        "description": "Notes"
+      }
     }
   },
   "review": {
@@ -283,7 +337,26 @@
     "estimate_other": "Let AI estimate the time to finish for {{count}} items without one",
     "aiLocked": "(AI is locked for your account)",
     "add_one": "Add {{count}} item",
-    "add_other": "Add {{count}} items"
+    "add_other": "Add {{count}} items",
+    "pick": "Add",
+    "unpick": "Don't add",
+    "noTime": "No time to finish",
+    "noTimeInput": "n/a",
+    "noTimeHint": "For endless games: left out of time estimates",
+    "played": "{{time}} played",
+    "neverPlayed": "Never played",
+    "search": "Search…",
+    "noMatches": "Nothing matches.",
+    "filter": {
+      "label": "Show",
+      "all": "All",
+      "picked": "Picked",
+      "never": "Never played",
+      "short": "Under 2 hours",
+      "long": "2 hours or more",
+      "wishlist": "Wishlist"
+    },
+    "onWishlist": "On your wishlist"
   },
   "stats": {
     "toDo": "To do",

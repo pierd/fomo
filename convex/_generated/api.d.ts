@@ -25,8 +25,10 @@ import type * as lib_globalRanking from "../lib/globalRanking.js";
 import type * as lib_locales from "../lib/locales.js";
 import type * as lib_mcpProtocol from "../lib/mcpProtocol.js";
 import type * as lib_ranking from "../lib/ranking.js";
+import type * as lib_steam from "../lib/steam.js";
 import type * as lib_tags from "../lib/tags.js";
 import type * as mcp from "../mcp.js";
+import type * as steam from "../steam.js";
 import type * as tags from "../tags.js";
 import type * as tournaments from "../tournaments.js";
 
@@ -54,8 +56,10 @@ declare const fullApi: ApiFromModules<{
   "lib/locales": typeof lib_locales;
   "lib/mcpProtocol": typeof lib_mcpProtocol;
   "lib/ranking": typeof lib_ranking;
+  "lib/steam": typeof lib_steam;
   "lib/tags": typeof lib_tags;
   mcp: typeof mcp;
+  steam: typeof steam;
   tags: typeof tags;
   tournaments: typeof tournaments;
 }>;

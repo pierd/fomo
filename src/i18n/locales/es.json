@@ -49,7 +49,13 @@
     "tagExists": "La etiqueta «{{name}}» ya existe.",
     "tournamentOver": "Este torneo ya terminó.",
     "noSuchAccount": "No hay ninguna cuenta con ese correo.",
-    "tooManyTokens": "Tienes demasiados tokens (máximo {{max}}). Revoca uno primero."
+    "tooManyTokens": "Tienes demasiados tokens (máximo {{max}}). Revoca uno primero.",
+    "steamNotConfigured": "La importación de Steam aún no está configurada en este servidor.",
+    "steamBadProfile": "Eso no parece un perfil de Steam. Pega su enlace.",
+    "steamNoProfile": "No hay ningún perfil de Steam con ese nombre.",
+    "steamPrivate": "Steam no muestra esta biblioteca. Haz públicos los «Detalles de los juegos» e inténtalo de nuevo.",
+    "steamUnavailable": "Steam no responde. Inténtalo más tarde.",
+    "steamWishlistUnavailable": "No se pudo cargar la lista de deseados. Inténtalo de nuevo o desmárcala para importar solo tu biblioteca."
   },
   "status": {
     "active": "Pendientes",
@@ -262,7 +268,55 @@
       "text": [
         "Pega una lista, un elemento por línea. Se entiende «Título by Autor» y «Título - Autor»; se quitan viñetas y números.",
         "¿Tienes notas desordenadas? Usa «Leer con IA» para sacar lo que contienen."
+      ],
+      "steam": [
+        "En Steam, abre Perfil → Editar perfil → Configuración de privacidad y haz públicos «Mi perfil» y «Detalles de los juegos». Puedes revertirlo después de importar.",
+        "Pega abajo el enlace a tu perfil.",
+        "Elige los juegos que quieres en tu lista. Al principio no hay ninguno elegido."
+      ],
+      "csv": [
+        "Exporta tu biblioteca o lista desde cualquier aplicación como archivo CSV con una fila de encabezados. Por ejemplo, Playnite (Windows) puede reunir bibliotecas de Epic, GOG y consolas y exportarlas con una extensión.",
+        "Elige el archivo abajo e indica qué hay en cada columna."
       ]
+    },
+    "csvSource": "Cualquier archivo CSV",
+    "fromProfile": "Desde tu perfil público, sin iniciar sesión",
+    "fromMapped": "Indica qué hay en cada columna",
+    "steam": {
+      "profile": "Perfil de Steam",
+      "load": "Cargar juegos",
+      "wishlist": "Incluir mi lista de deseados"
+    },
+    "csv": {
+      "intro": "¿Qué hay en cada columna? Solo hace falta el nombre.",
+      "noColumn": "(ninguna)",
+      "unit": "Unidad",
+      "units": {
+        "minutes": "minutos",
+        "hours": "horas",
+        "seconds": "segundos"
+      },
+      "example": "p. ej. {{value}}",
+      "dateOrder": "Las fechas como 03/04/2023 son",
+      "dmy": "día/mes/año",
+      "mdy": "mes/día/año",
+      "statuses": "¿Qué significan los estados?",
+      "optIn": "Empezar sin nada elegido (para bibliotecas grandes)",
+      "review": "Revisar",
+      "fields": {
+        "title": "Nombre",
+        "creator": "De",
+        "year": "Año",
+        "tags": "Etiquetas",
+        "status": "Estado",
+        "duration": "Tiempo para terminar",
+        "played": "Tiempo jugado",
+        "addedAt": "Fecha de adición",
+        "finishedAt": "Fecha de finalización",
+        "source": "Origen",
+        "sourceUrl": "Enlace",
+        "description": "Notas"
+      }
     }
   },
   "review": {
@@ -299,7 +353,26 @@
     "aiLocked": "(la IA está bloqueada para tu cuenta)",
     "add_one": "Añadir {{count}} elemento",
     "add_many": "Añadir {{count}} elementos",
-    "add_other": "Añadir {{count}} elementos"
+    "add_other": "Añadir {{count}} elementos",
+    "pick": "Añadir",
+    "unpick": "No añadir",
+    "noTime": "Sin tiempo para terminar",
+    "noTimeInput": "n/d",
+    "noTimeHint": "Para juegos sin fin: no cuentan en las estimaciones de tiempo",
+    "played": "{{time}} jugados",
+    "neverPlayed": "Nunca jugado",
+    "search": "Buscar…",
+    "noMatches": "Nada coincide.",
+    "filter": {
+      "label": "Mostrar",
+      "all": "Todos",
+      "picked": "Elegidos",
+      "never": "Nunca jugados",
+      "short": "Menos de 2 horas",
+      "long": "2 horas o más",
+      "wishlist": "Lista de deseados"
+    },
+    "onWishlist": "En tu lista de deseados"
   },
   "stats": {
     "toDo": "Pendientes",

@@ -2,6 +2,7 @@ import Papa from "papaparse";
 import { minutesFromPages } from "../../convex/lib/duration";
 import { normalizeTag } from "./tags";
 import { KIND_TAGS, type Kind } from "../../convex/lib/tags";
+import type { SteamGame, WishlistGame } from "../../convex/lib/steam";
 import type { Locale } from "../../convex/lib/locales";
 
 // Thrown for a file that isn't the expected export; the message is a
@@ -19,6 +20,11 @@ export type Draft = {
   description?: string;
   durationMinutes?: number;
   pages?: number;
+  // "Time to finish" makes no sense for it.
+  noDuration?: boolean;
+  // Only to help choose in the review.
+  playedMinutes?: number;
+  wishlist?: boolean;
   status: Status;
   addedAt?: number;
   finishedAt?: number;
@@ -26,14 +32,18 @@ export type Draft = {
   sourceUrl?: string;
   kind?: string;
   isbn?: string;
+  coverUrl?: string;
 };
 
-export type SourceId = "goodreads" | "storygraph" | "letterboxd" | "imdb" | "text";
+export type SourceId = "goodreads" | "storygraph" | "letterboxd" | "imdb" | "steam" | "csv" | "text";
+export type FileSourceId = Exclude<SourceId, "steam" | "csv">;
 
 export type Source = {
   id: SourceId;
   name: string;
-  accepts: "csv" | "text";
+  accepts: "csv" | "mappedCsv" | "profile" | "text";
+  // Nothing is added unless picked: libraries full of things you never meant to play.
+  optIn?: boolean;
 };
 
 // Step-by-step instructions live in the translations: import.steps.<id>.
@@ -42,10 +52,12 @@ export const SOURCES: Source[] = [
   { id: "storygraph", name: "StoryGraph", accepts: "csv" },
   { id: "letterboxd", name: "Letterboxd", accepts: "csv" },
   { id: "imdb", name: "IMDb", accepts: "csv" },
+  { id: "steam", name: "Steam", accepts: "profile", optIn: true },
+  { id: "csv", name: "", accepts: "mappedCsv" },
   { id: "text", name: "", accepts: "text" },
 ];
 
-function parseCsv(text: string) {
+export function parseCsv(text: string) {
   const res = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ""), {
     header: true,
     skipEmptyLines: true,
@@ -54,7 +66,7 @@ function parseCsv(text: string) {
   return { rows: res.data, fields: res.meta.fields ?? [] };
 }
 
-function num(s: string | undefined) {
+export function num(s: string | undefined) {
   if (!s) return undefined;
   const n = Number(s.replace(/[^\d.]/g, ""));
   return Number.isFinite(n) && n > 0 ? n : undefined;
@@ -223,7 +235,7 @@ export function parseText(text: string, tagNames: string[]): Draft[] {
     });
 }
 
-export function parseFile(source: SourceId, text: string, fileName: string, locale: Locale): Draft[] {
+export function parseFile(source: FileSourceId, text: string, fileName: string, locale: Locale): Draft[] {
   const drafts =
     source === "goodreads"
       ? parseGoodreads(text, locale)
@@ -235,6 +247,36 @@ export function parseFile(source: SourceId, text: string, fileName: string, loca
             ? parseImdb(text, locale)
             : parseText(text, []);
   return drafts.filter((d) => d.title);
+}
+
+// The wishlist first: what you already said you want to play.
+export function steamDrafts(games: SteamGame[], wishlist: WishlistGame[], locale: Locale): Draft[] {
+  const common = (appId: number) => ({
+    tagNames: [KIND_TAGS.game[locale]],
+    status: "active" as const,
+    source: "Steam",
+    sourceUrl: `https://store.steampowered.com/app/${appId}/`,
+    coverUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`,
+    kind: "game",
+  });
+  return [
+    ...wishlist.map((g) => ({
+      ...common(g.appId),
+      title: g.title,
+      creator: g.creator,
+      year: g.year,
+      addedAt: g.addedAt,
+      ...(g.coverUrl ? { coverUrl: g.coverUrl } : {}),
+      wishlist: true,
+    })),
+    ...games.map((g) => ({
+      ...common(g.appId),
+      title: g.title,
+      playedMinutes: g.playedMinutes,
+      // Only used if marked as done or discarded in the review.
+      finishedAt: g.lastPlayedAt,
+    })),
+  ];
 }
 
 // For duplicate detection: case, punctuation, series info and leading

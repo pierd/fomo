@@ -8,6 +8,10 @@ next. Live at https://fomo.lessismore.studio.
 - AI (title clean-up, time estimates, reading rough notes) goes through the
   Convex AI Gateway (`convex/ai.ts`, `convex/imports.ts`). Locked per account;
   an admin unlocks it on the Admin page.
+- Imports (`src/lib/importers.ts`): known CSV exports, any CSV with a column
+  mapping (`src/lib/csvMapping.ts`), text, and a public Steam library
+  (`convex/steam.ts`, needs `STEAM_API_KEY`). How games fit in and what could
+  come next: `docs/games.md`.
 - Covers: source page `og:image` (Goodreads, Letterboxd), Open Library for
   books, Wikipedia otherwise; downloaded into Convex storage (`convex/lib/covers.ts`).
 - Localized in English, Spanish and Polish (i18next). **Every UI string goes
@@ -43,6 +47,9 @@ npx convex dev   # backend, writes .env.local
 npm run dev      # frontend on http://localhost:5173
 npm test
 ```
+
+For Steam imports, get a key at https://steamcommunity.com/dev/apikey and run
+`npx convex env set STEAM_API_KEY` (add `--prod` for production).
 
 Make yourself admin (after signing up): `npx convex run admin:grant '{"email":"you@example.com"}'`
 (add `--prod` for production).

@@ -49,7 +49,13 @@
     "tagExists": "Tag „{{name}}” już istnieje.",
     "tournamentOver": "Ten turniej już się skończył.",
     "noSuchAccount": "Nie ma konta z tym adresem e-mail.",
-    "tooManyTokens": "Masz za dużo tokenów (najwyżej {{max}}). Najpierw unieważnij któryś."
+    "tooManyTokens": "Masz za dużo tokenów (najwyżej {{max}}). Najpierw unieważnij któryś.",
+    "steamNotConfigured": "Import ze Steama nie jest jeszcze skonfigurowany na tym serwerze.",
+    "steamBadProfile": "To nie wygląda na profil Steam. Wklej link do niego.",
+    "steamNoProfile": "Nie ma profilu Steam o tej nazwie.",
+    "steamPrivate": "Steam nie udostępnia tej biblioteki. Ustaw „Szczegóły gier” jako publiczne i spróbuj ponownie.",
+    "steamUnavailable": "Steam nie odpowiada. Spróbuj później.",
+    "steamWishlistUnavailable": "Nie udało się wczytać listy życzeń. Spróbuj ponownie albo odznacz ją, żeby zaimportować tylko bibliotekę."
   },
   "status": {
     "active": "Do zrobienia",
@@ -273,7 +279,55 @@
       "text": [
         "Wklej listę, jedna pozycja w linii. Rozumiem „Tytuł autorstwa Autor” i „Tytuł - Autor”; punktory i numery zostaną usunięte.",
         "Masz chaotyczne notatki? Użyj „Przeczytaj z AI”, żeby wyłowić z nich pozycje."
+      ],
+      "steam": [
+        "Na Steamie otwórz Profil → Edytuj profil → Ustawienia prywatności i ustaw „Mój profil” oraz „Szczegóły gier” jako publiczne. Po imporcie możesz to cofnąć.",
+        "Wklej poniżej link do swojego profilu.",
+        "Wybierz gry, które chcesz mieć na liście. Na początku żadna nie jest wybrana."
+      ],
+      "csv": [
+        "Wyeksportuj bibliotekę lub listę z dowolnej aplikacji do pliku CSV z wierszem nagłówków. Na przykład Playnite (Windows) potrafi zebrać biblioteki z Epic, GOG i konsol i wyeksportować je za pomocą rozszerzenia.",
+        "Wybierz plik poniżej i wskaż, co jest w której kolumnie."
       ]
+    },
+    "csvSource": "Dowolny plik CSV",
+    "fromProfile": "Z Twojego publicznego profilu, bez logowania",
+    "fromMapped": "Wskaż, co jest w której kolumnie",
+    "steam": {
+      "profile": "Profil Steam",
+      "load": "Wczytaj gry",
+      "wishlist": "Uwzględnij listę życzeń"
+    },
+    "csv": {
+      "intro": "Co jest w której kolumnie? Potrzebna jest tylko nazwa.",
+      "noColumn": "(brak)",
+      "unit": "Jednostka",
+      "units": {
+        "minutes": "minuty",
+        "hours": "godziny",
+        "seconds": "sekundy"
+      },
+      "example": "np. {{value}}",
+      "dateOrder": "Daty takie jak 03/04/2023 to",
+      "dmy": "dzień/miesiąc/rok",
+      "mdy": "miesiąc/dzień/rok",
+      "statuses": "Co oznaczają statusy?",
+      "optIn": "Zacznij bez wybranych pozycji (dla dużych bibliotek)",
+      "review": "Przejrzyj",
+      "fields": {
+        "title": "Nazwa",
+        "creator": "Autor",
+        "year": "Rok",
+        "tags": "Tagi",
+        "status": "Status",
+        "duration": "Czas do ukończenia",
+        "played": "Czas gry",
+        "addedAt": "Data dodania",
+        "finishedAt": "Data ukończenia",
+        "source": "Źródło",
+        "sourceUrl": "Link",
+        "description": "Notatki"
+      }
     }
   },
   "review": {
@@ -315,7 +369,26 @@
     "add_one": "Dodaj {{count}} pozycję",
     "add_few": "Dodaj {{count}} pozycje",
     "add_many": "Dodaj {{count}} pozycji",
-    "add_other": "Dodaj {{count}} pozycji"
+    "add_other": "Dodaj {{count}} pozycji",
+    "pick": "Dodaj",
+    "unpick": "Nie dodawaj",
+    "noTime": "Bez czasu do ukończenia",
+    "noTimeInput": "n/d",
+    "noTimeHint": "Dla gier bez końca: nie liczą się do szacowanego czasu",
+    "played": "czas gry: {{time}}",
+    "neverPlayed": "Nigdy nie uruchomiona",
+    "search": "Szukaj…",
+    "noMatches": "Nic nie pasuje.",
+    "filter": {
+      "label": "Pokaż",
+      "all": "Wszystkie",
+      "picked": "Wybrane",
+      "never": "Nigdy nie uruchomione",
+      "short": "Poniżej 2 godzin",
+      "long": "2 godziny lub więcej",
+      "wishlist": "Lista życzeń"
+    },
+    "onWishlist": "Na liście życzeń"
   },
   "stats": {
     "toDo": "Do zrobienia",

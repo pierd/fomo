@@ -20,20 +20,37 @@ import type { Item, Tag } from "../lib/types";
 import { errorMessage, formatMinutes } from "../lib/format";
 import { navigate } from "../lib/router";
 import { TagInput } from "../components/TagInput";
+import { CsvMapper } from "../components/CsvMapper";
+import { SteamForm } from "../components/SteamForm";
+import { readTable, type CsvTable } from "../lib/csvMapping";
 
 type Row = Draft & { key: number; discarded: boolean; duplicate?: string; selected: boolean };
 
 const BATCH = 200;
 
+const FILTERS = ["all", "picked", "wishlist", "never", "short", "long"] as const;
+type Filter = (typeof FILTERS)[number];
+
+function matches(r: Row, filter: Filter) {
+  if (filter === "all") return true;
+  if (filter === "picked") return !r.discarded;
+  if (filter === "wishlist") return r.wishlist === true;
+  if (r.playedMinutes === undefined) return false;
+  if (filter === "never") return r.playedMinutes === 0;
+  return filter === "short" ? r.playedMinutes > 0 && r.playedMinutes < 120 : r.playedMinutes >= 120;
+}
+
 export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Tag[]; aiEnabled: boolean }) {
   const { t } = useTranslation();
   const [source, setSource] = useState<Source | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [optIn, setOptIn] = useState(false);
 
   if (rows !== null && source !== null) {
     return (
       <Review
         source={source}
+        optIn={optIn}
         initial={rows}
         tags={tags}
         aiEnabled={aiEnabled}
@@ -48,7 +65,11 @@ export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Ta
         aiEnabled={aiEnabled}
         tags={tags}
         onBack={() => setSource(null)}
-        onParsed={(drafts) => setRows(markDuplicates(drafts, items, t))}
+        onParsed={(drafts, pickFromNothing) => {
+          setOptIn(pickFromNothing);
+          const marked = markDuplicates(drafts, items, t);
+          setRows(pickFromNothing ? marked.map((r) => ({ ...r, discarded: true })) : marked);
+        }}
       />
     );
   }
@@ -63,7 +84,7 @@ export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Ta
           <li key={s.id}>
             <button className="card w-full p-4 text-left transition-colors hover:border-accent" onClick={() => setSource(s)}>
               <div className="font-semibold">{sourceName(s, t)}</div>
-              <div className="text-sm text-muted">{s.accepts === "csv" ? t("import.fromCsv") : t("import.fromText")}</div>
+              <div className="text-sm text-muted">{t(SOURCE_HINTS[s.accepts])}</div>
             </button>
           </li>
         ))}
@@ -72,8 +93,15 @@ export function ImportPage({ items, tags, aiEnabled }: { items: Item[]; tags: Ta
   );
 }
 
+const SOURCE_HINTS: Record<Source["accepts"], string> = {
+  csv: "import.fromCsv",
+  mappedCsv: "import.fromMapped",
+  profile: "import.fromProfile",
+  text: "import.fromText",
+};
+
 function sourceName(s: Source, t: TFunction) {
-  return s.id === "text" ? t("import.textSource") : s.name;
+  return s.id === "text" ? t("import.textSource") : s.id === "csv" ? t("import.csvSource") : s.name;
 }
 
 function markDuplicates(drafts: Draft[], items: Item[], t: TFunction): Row[] {
@@ -107,24 +135,28 @@ function SourceStep({
   aiEnabled: boolean;
   tags: Tag[];
   onBack: () => void;
-  onParsed: (drafts: Draft[]) => void;
+  onParsed: (drafts: Draft[], optIn: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState("");
+  const [table, setTable] = useState<CsvTable | null>(null);
   const [textTags, setTextTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const parseNotes = useAction(api.imports.parseNotes);
 
-  const handle = (drafts: Draft[]) => {
+  const handle = (drafts: Draft[], optIn = source.optIn ?? false) => {
     if (drafts.length === 0) setError(t("import.nothingFound"));
-    else onParsed(drafts);
+    else onParsed(drafts, optIn);
   };
 
   return (
     <div className="space-y-4">
-      <button className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink" onClick={onBack}>
-        <ArrowLeft size={14} /> {t("import.title")}
+      <button
+        className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"
+        onClick={() => (table !== null ? setTable(null) : onBack())}
+      >
+        <ArrowLeft size={14} /> {table !== null ? sourceName(source, t) : t("import.title")}
       </button>
       <h1 className="text-2xl font-bold">{t("import.from", { source: sourceName(source, t) })}</h1>
       <ol className="card list-inside list-decimal space-y-1.5 p-5 text-sm">
@@ -133,7 +165,11 @@ function SourceStep({
         ))}
       </ol>
 
-      {source.accepts === "csv" ? (
+      {source.accepts === "profile" ? (
+        <SteamForm onParsed={handle} onError={setError} />
+      ) : table !== null ? (
+        <CsvMapper table={table} tags={tags} onParsed={handle} />
+      ) : source.accepts !== "text" ? (
         <label className="card flex cursor-pointer flex-col items-center gap-2 border-dashed p-8 text-center hover:border-accent">
           <FileUp size={24} className="text-muted" />
           <span className="font-medium">{t("import.chooseFile")}</span>
@@ -147,7 +183,14 @@ function SourceStep({
               if (!file) return;
               setError(null);
               try {
-                handle(parseFile(source.id, await file.text(), file.name, currentLocale()));
+                const content = await file.text();
+                if (source.id === "csv") {
+                  const read = readTable(content);
+                  if (read.rows.length === 0) setError(t("import.nothingFound"));
+                  else setTable(read);
+                } else if (source.id !== "steam") {
+                  handle(parseFile(source.id, content, file.name, currentLocale()));
+                }
               } catch (err) {
                 setError(
                   err instanceof ImportFormatError
@@ -218,12 +261,14 @@ function SourceStep({
 
 function Review({
   source,
+  optIn,
   initial,
   tags,
   aiEnabled,
   onBack,
 }: {
   source: Source;
+  optIn: boolean;
   initial: Row[];
   tags: Tag[];
   aiEnabled: boolean;
@@ -231,6 +276,9 @@ function Review({
 }) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(initial);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [timeVersion, setTimeVersion] = useState(0);
+  const [search, setSearch] = useState("");
   const [bulkTags, setBulkTags] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [fetchCovers, setFetchCovers] = useState(true);
@@ -241,10 +289,15 @@ function Review({
 
   const existingTags = useMemo(() => tags.map((t) => t.name), [tags]);
   const kept = rows.filter((r) => !r.discarded);
-  const selected = rows.filter((r) => r.selected);
-  const target = selected.length ? selected : rows;
+  const hasWishlist = rows.some((r) => r.wishlist);
+  const hasPlayed = rows.some((r) => r.playedMinutes !== undefined);
+  const needle = search.trim().toLowerCase();
+  const visible = rows.filter((r) => matches(r, filter) && r.title.toLowerCase().includes(needle));
+  // Hidden rows are never touched by bulk actions, even if selected before.
+  const selected = visible.filter((r) => r.selected);
+  const target = selected.length ? selected : visible;
   const dupes = rows.filter((r) => r.duplicate).length;
-  const missingTime = kept.filter((r) => r.durationMinutes === undefined).length;
+  const missingTime = kept.filter((r) => r.durationMinutes === undefined && !r.noDuration).length;
   const allTagsInImport = useMemo(() => [...new Set(rows.flatMap((r) => r.tagNames))].sort(), [rows]);
 
   const patch = (key: number, p: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...p } : r)));
@@ -266,6 +319,7 @@ function Review({
           description: r.description,
           durationMinutes: r.durationMinutes,
           pages: r.pages,
+          noDuration: r.noDuration,
           status: r.status,
           addedAt: r.addedAt,
           finishedAt: r.finishedAt,
@@ -273,6 +327,7 @@ function Review({
           sourceUrl: r.sourceUrl,
           kind: r.kind,
           isbn: r.isbn,
+          coverUrl: r.coverUrl,
         }));
         await commit({ items: batch, fetchCovers, estimateWithAi: estimate, startDelayMs: i * 1500 });
         setProgress({ done: Math.min(kept.length, i + BATCH), total: kept.length });
@@ -297,28 +352,69 @@ function Review({
         </p>
       </div>
 
-      {/* Bulk actions apply to the selected rows, or to all when none are. */}
+      {/* Bulk actions apply to the selected rows, or to all shown when none are. */}
       <div className="card sticky top-2 z-10 space-y-2 p-3 shadow-sm">
+        {(hasPlayed || optIn) && (
+          <div className="flex flex-wrap gap-2">
+            <select
+              className="input w-auto py-1 text-xs"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as Filter)}
+              aria-label={t("review.filter.label")}
+            >
+              {FILTERS.filter((f) => f === "all" || f === "picked" || (f === "wishlist" ? hasWishlist : hasPlayed)).map((f) => (
+                <option key={f} value={f}>
+                  {t(`review.filter.${f}`)}
+                </option>
+              ))}
+            </select>
+            <input
+              className="input min-w-40 flex-1 py-1 text-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("review.search")}
+              aria-label={t("review.search")}
+            />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <label className="flex items-center gap-1.5">
             <input
               type="checkbox"
               className="accent-accent"
-              checked={selected.length === rows.length && rows.length > 0}
+              checked={selected.length === visible.length && visible.length > 0}
               ref={(el) => {
-                if (el) el.indeterminate = selected.length > 0 && selected.length < rows.length;
+                if (el) el.indeterminate = selected.length > 0 && selected.length < visible.length;
               }}
-              onChange={(e) => setRows((rs) => rs.map((r) => ({ ...r, selected: e.target.checked })))}
+              onChange={(e) => {
+                const keys = new Set(visible.map((r) => r.key));
+                const checked = e.target.checked;
+                setRows((rs) => rs.map((r) => (keys.has(r.key) ? { ...r, selected: checked } : r)));
+              }}
             />
             {selected.length ? t("review.selected", { count: selected.length }) : t("review.select")}
           </label>
           <span className="text-muted">·</span>
           <span className="text-muted">{selected.length ? t("review.forSelected") : t("review.forAll")}</span>
           <button className="btn py-1 text-xs" onClick={() => patchTarget(() => ({ discarded: true }))}>
-            <X size={12} /> {t("review.discard")}
+            <X size={12} /> {t(optIn ? "review.unpick" : "review.discard")}
           </button>
-          <button className="btn py-1 text-xs" onClick={() => patchTarget(() => ({ discarded: false }))}>
-            <Undo2 size={12} /> {t("review.undiscard")}
+          <button
+            className="btn py-1 text-xs"
+            // Picking everything shown leaves duplicates out; selecting them adds them anyway.
+            onClick={() => patchTarget((r) => (optIn && r.duplicate && !r.selected ? {} : { discarded: false }))}
+          >
+            {optIn ? <Check size={12} /> : <Undo2 size={12} />} {t(optIn ? "review.pick" : "review.undiscard")}
+          </button>
+          <button
+            className="btn py-1 text-xs"
+            title={t("review.noTimeHint")}
+            onClick={() => {
+              patchTarget(() => ({ noDuration: true, durationMinutes: undefined, pages: undefined }));
+              setTimeVersion((n) => n + 1);
+            }}
+          >
+            {t("review.noTime")}
           </button>
           <select
             className="input w-auto py-1 text-xs"
@@ -372,10 +468,13 @@ function Review({
       </div>
 
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {rows.map((r) => (
+        {visible.length === 0 && <li className="p-4 text-sm text-muted">{t("review.noMatches")}</li>}
+        {visible.map((r) => (
           <ReviewRow
-            key={r.key}
+            // Remounts after the bulk change, so the time being edited follows it.
+            key={`${r.key}-${timeVersion}`}
             row={r}
+            optIn={optIn}
             expanded={expanded === r.key}
             existingTags={existingTags}
             onToggle={() => setExpanded(expanded === r.key ? null : r.key)}
@@ -387,7 +486,7 @@ function Review({
       <div className="card space-y-3 p-4">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="accent-accent" checked={fetchCovers} onChange={(e) => setFetchCovers(e.target.checked)} />
-          {source.id === "goodreads" || source.id === "letterboxd"
+          {source.id === "goodreads" || source.id === "steam" || source.id === "letterboxd"
             ? t("review.coversFrom", { source: source.name })
             : t("review.covers")}
         </label>
@@ -422,19 +521,23 @@ function Review({
 
 function ReviewRow({
   row,
+  optIn,
   expanded,
   existingTags,
   onToggle,
   onChange,
 }: {
   row: Row;
+  optIn: boolean;
   expanded: boolean;
   existingTags: string[];
   onToggle: () => void;
   onChange: (p: Partial<Row>) => void;
 }) {
   const { t } = useTranslation();
-  const [duration, setDuration] = useState(row.durationMinutes ? formatMinutes(row.durationMinutes) : "");
+  const [duration, setDuration] = useState(
+    row.noDuration ? t("review.noTimeInput") : row.durationMinutes ? formatMinutes(row.durationMinutes) : "",
+  );
   return (
     <li className={row.discarded ? "bg-sunken" : ""}>
       <div className="flex items-start gap-3 px-3 py-2">
@@ -446,7 +549,7 @@ function ReviewRow({
           aria-label={t("review.select")}
         />
         <button className="min-w-0 flex-1 text-left" onClick={onToggle}>
-          <div className={`text-sm font-medium ${row.discarded ? "text-muted line-through" : ""}`}>
+          <div className={`text-sm font-medium ${row.discarded ? (optIn ? "text-muted" : "text-muted line-through") : ""}`}>
             {row.title}
             {row.year && <span className="ml-1 font-normal text-muted">({row.year})</span>}
             {row.creator && <span className="font-normal text-muted"> · {row.creator}</span>}
@@ -454,6 +557,15 @@ function ReviewRow({
           <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
             {row.duplicate && <span className="rounded bg-new-soft px-1.5 text-new">{row.duplicate}</span>}
             {row.status !== "active" && <span className="rounded bg-sunken px-1.5">{t(`status.${row.status}`)}</span>}
+            {row.wishlist && <span className="rounded bg-sunken px-1.5">{t("review.onWishlist")}</span>}
+            {row.playedMinutes !== undefined && (
+              <span>
+                {row.playedMinutes > 0
+                  ? t("review.played", { time: formatMinutes(row.playedMinutes) })
+                  : t("review.neverPlayed")}
+              </span>
+            )}
+            {row.noDuration && <span className="rounded bg-sunken px-1.5">{t("review.noTime")}</span>}
             {row.durationMinutes !== undefined && <span>{formatMinutes(row.durationMinutes)}</span>}
             {row.tagNames.map((tag) => (
               <span key={tag} className={existingTags.includes(tag) ? "chip" : "chip border-dashed border-new bg-new-soft text-new"}>
@@ -475,7 +587,9 @@ function ReviewRow({
           onClick={() => onChange({ discarded: !row.discarded })}
           title={row.discarded ? t("review.addAfterAll") : t("review.dontAdd")}
         >
-          {row.discarded ? t("review.undiscard") : t("review.discard")}
+          {optIn
+            ? t(row.discarded ? "review.pick" : "review.unpick")
+            : t(row.discarded ? "review.undiscard" : "review.discard")}
         </button>
       </div>
       {expanded && (
@@ -505,9 +619,9 @@ function ReviewRow({
               onChange={(e) => {
                 setDuration(e.target.value);
                 const d = parseDuration(e.target.value);
-                if (d?.mode === "minutes") onChange({ durationMinutes: d.minutes, pages: undefined });
-                else if (d?.mode === "pages") onChange({ durationMinutes: d.minutes, pages: d.pages });
-                else if (d) onChange({ durationMinutes: undefined, pages: undefined });
+                if (d?.mode === "minutes") onChange({ durationMinutes: d.minutes, pages: undefined, noDuration: false });
+                else if (d?.mode === "pages") onChange({ durationMinutes: d.minutes, pages: d.pages, noDuration: false });
+                else if (d) onChange({ durationMinutes: undefined, pages: undefined, noDuration: d.mode === "na" });
               }}
             />
           </div>

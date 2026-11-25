@@ -15,7 +15,13 @@ export type ErrorCode =
   | "tagExists"
   | "tournamentOver"
   | "noSuchAccount"
-  | "tooManyTokens";
+  | "tooManyTokens"
+  | "steamNotConfigured"
+  | "steamBadProfile"
+  | "steamNoProfile"
+  | "steamPrivate"
+  | "steamUnavailable"
+  | "steamWishlistUnavailable";
 
 export function fail(code: ErrorCode, params: Record<string, string | number> = {}): never {
   throw new ConvexError({ code, ...params });

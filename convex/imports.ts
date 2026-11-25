@@ -23,6 +23,8 @@ const importItemValidator = v.object({
   description: v.optional(v.string()),
   durationMinutes: v.optional(v.number()),
   pages: v.optional(v.number()),
+  // "Time to finish" makes no sense for it: endless games.
+  noDuration: v.optional(v.boolean()),
   status: statusValidator,
   addedAt: v.optional(v.number()),
   finishedAt: v.optional(v.number()),
@@ -31,6 +33,7 @@ const importItemValidator = v.object({
   // Cover lookup hints.
   kind: v.optional(v.string()),
   isbn: v.optional(v.string()),
+  // A direct link to the image.
   coverUrl: v.optional(v.string()),
 });
 
@@ -53,8 +56,9 @@ export const commit = mutation({
     for (const it of items) {
       const title = it.title.trim();
       if (!title) continue;
-      const pages = it.pages && it.pages > 0 ? it.pages : undefined;
-      const minutes = it.durationMinutes && it.durationMinutes > 0 ? Math.round(it.durationMinutes) : undefined;
+      const na = it.noDuration === true;
+      const pages = !na && it.pages && it.pages > 0 ? it.pages : undefined;
+      const minutes = !na && it.durationMinutes && it.durationMinutes > 0 ? Math.round(it.durationMinutes) : undefined;
       const itemId = await ctx.db.insert("items", {
         userId,
         title,
@@ -62,17 +66,18 @@ export const commit = mutation({
         year: it.year,
         tagIds: await ensureTags(ctx, userId, it.tagNames),
         description: it.description?.trim() || undefined,
-        durationMode: minutes !== undefined ? (pages !== undefined ? "pages" : "minutes") : ai ? "auto" : "unset",
+        durationMode: na ? "na" : minutes !== undefined ? (pages !== undefined ? "pages" : "minutes") : ai ? "auto" : "unset",
         durationMinutes: minutes,
         pages,
         status: it.status,
         addedAt: it.addedAt ?? now,
-        finishedAt: it.status !== "active" ? (it.finishedAt ?? it.addedAt ?? now) : undefined,
+        // Unknown stays unknown: "now" would count old finishes in the current pace.
+        finishedAt: it.status !== "active" ? (it.finishedAt ?? it.addedAt) : undefined,
         source: it.source,
         sourceUrl: it.sourceUrl,
-        aiStatus: ai && minutes === undefined ? "pending" : undefined,
+        aiStatus: ai && !na && minutes === undefined ? "pending" : undefined,
       });
-      if (ai && minutes === undefined) {
+      if (ai && !na && minutes === undefined) {
         await ctx.scheduler.runAfter(delay, internal.ai.cleanupItem, { itemId, full: false });
       }
       if (fetchCovers) {
@@ -85,7 +90,8 @@ export const commit = mutation({
             year: it.year,
             kind: it.kind,
             isbn: it.isbn,
-            sourceUrl: it.coverUrl ?? it.sourceUrl,
+            coverUrl: it.coverUrl,
+            sourceUrl: it.sourceUrl,
           },
         });
       }
