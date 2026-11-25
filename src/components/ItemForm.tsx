@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
-import { useMutation } from "convex/react";
 import { Check, ExternalLink, ImagePlus, Lock, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import { useOnlineMutation } from "../lib/offline/context";
 import { useTranslation } from "react-i18next";
 import { durationToInput, parseDuration } from "../../convex/lib/duration";
 import type { Item, Tag } from "../lib/types";
@@ -41,13 +41,13 @@ export function ItemForm(props: Props) {
   const durationRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const create = useMutation(api.items.create);
-  const update = useMutation(api.items.update);
-  const cleanup = useMutation(api.items.cleanup);
-  const setStatus = useMutation(api.items.setStatus);
-  const remove = useMutation(api.items.remove);
-  const setCover = useMutation(api.items.setCover);
-  const uploadUrl = useMutation(api.items.generateUploadUrl);
+  const create = useOnlineMutation(api.items.create);
+  const update = useOnlineMutation(api.items.update);
+  const cleanup = useOnlineMutation(api.items.cleanup);
+  const setStatus = useOnlineMutation(api.items.setStatus);
+  const remove = useOnlineMutation(api.items.remove);
+  const setCover = useOnlineMutation(api.items.setCover);
+  const uploadUrl = useOnlineMutation(api.items.generateUploadUrl);
 
   const awaitingPages = duration.trim() !== "" && duration.trim() === words.pages;
   const parsed = awaitingPages ? parseDuration("") : parseDuration(duration);
@@ -136,7 +136,7 @@ export function ItemForm(props: Props) {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   void run(async () => {
-                    const url = await uploadUrl();
+                    const url = await uploadUrl({});
                     const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
                     const { storageId } = (await res.json()) as { storageId: string };
                     await setCover({ itemId: item._id, storageId: storageId as Id<"_storage"> });

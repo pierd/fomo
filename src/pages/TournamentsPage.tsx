@@ -1,16 +1,23 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { Swords, Trophy } from "lucide-react";
+import { MAX_PARTICIPANTS } from "../../convex/lib/ranking";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { Item, Tag } from "../lib/types";
 import { useTranslation } from "react-i18next";
 import { errorMessage, formatDate } from "../lib/format";
+import { cacheKey, useCachedQuery, useOffline, useOnlineMutation, useOutbox } from "../lib/offline/context";
+import { newLocalId } from "../lib/offline/outbox";
+import { listWithLocal, participants, playTournament, previewLocal, type TournamentData } from "../lib/offline/overlay";
 import { navigate } from "../lib/router";
 
 export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] }) {
   const { t } = useTranslation();
-  const tournaments = useQuery(api.tournaments.list);
+  const { offline } = useOffline();
+  const { ops } = useOutbox();
+  const saved = useCachedQuery(api.tournaments.list, {});
+  const tournaments = useMemo(() => saved && listWithLocal(saved, ops), [saved, ops]);
   const [creating, setCreating] = useState(false);
   const tagName = useMemo(() => new Map(tags.map((t) => [t._id, t.name])), [tags]);
 
@@ -32,12 +39,14 @@ export function TournamentsPage({ tags, items }: { tags: Tag[]; items: Item[] })
         <NewTournament
           tags={tags}
           items={items}
-          past={(tournaments ?? []).map((x) => ({ _id: x._id, name: x.name, status: x.status }))}
+          past={(saved ?? []).map((x) => ({ _id: x._id, name: x.name, status: x.status }))}
           onCancel={() => setCreating(false)}
         />
       )}
 
-      {tournaments === undefined ? null : tournaments.length === 0 ? (
+      {tournaments === undefined ? (
+        offline && <p className="text-muted">{t("offline.notSaved")}</p>
+      ) : tournaments.length === 0 ? (
         !creating && (
           <div className="card px-6 py-12 text-center text-muted">
             {t("tournaments.empty")}
@@ -98,8 +107,48 @@ function NewTournament({
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const preview = useQuery(api.tournaments.preview, { tagIds, importFrom });
-  const create = useMutation(api.tournaments.create);
+  const { offline, cache, outbox } = useOffline();
+  const { ops } = useOutbox();
+  const { isAuthenticated } = useConvexAuth();
+  const counted = useQuery(api.tournaments.preview, offline || !isAuthenticated ? "skip" : { tagIds, importFrom });
+  const create = useOnlineMutation(api.tournaments.create);
+
+  // Offline, earlier results come from the tournaments saved on the device.
+  const savedData = (id: Id<"tournaments">) => {
+    const data = cache.get(cacheKey(api.tournaments.get, { tournamentId: id })) as TournamentData | undefined;
+    return data && playTournament(data, ops);
+  };
+  const usableSources = offline ? importFrom.filter((id) => savedData(id) !== undefined) : importFrom;
+  const startLocally = () => {
+    const ids = participants(items, tagIds);
+    const { accepted, conflicts } = previewLocal(ids, usableSources.flatMap((id) => savedData(id) ?? []));
+    return { ids, accepted, conflicts };
+  };
+  const local = offline ? startLocally() : null;
+  const preview = local
+    ? { participantCount: local.ids.length, imported: local.accepted.length, conflicts: local.conflicts }
+    : counted;
+  const startOffline = () => {
+    const { ids, accepted, conflicts } = startLocally();
+    if (ids.length > MAX_PARTICIPANTS) {
+      setError(t("errors.tooManyItems", { count: ids.length, max: MAX_PARTICIPANTS }));
+      return;
+    }
+    const tagNames = tagIds.flatMap((id) => tags.find((tag) => tag._id === id)?.name ?? []);
+    const clientId = newLocalId();
+    outbox.add({
+      kind: "create",
+      clientId,
+      name: name.trim() || `${tagNames.join(" + ") || "Everything"} · ${new Date().toISOString().slice(0, 10)}`,
+      tagIds,
+      importFrom: usableSources,
+      participantIds: ids,
+      at: Date.now(),
+      imported: accepted,
+      conflicts,
+    });
+    navigate(`/tournaments/${clientId}`);
+  };
 
   // Only offer tags that unfinished items actually have.
   const usable = useMemo(() => {
@@ -145,7 +194,8 @@ function NewTournament({
                 <input
                   type="checkbox"
                   className="accent-accent"
-                  checked={importFrom.includes(p._id)}
+                  checked={usableSources.includes(p._id)}
+                  disabled={offline && savedData(p._id) === undefined}
                   onChange={() => setImportFrom(toggle(importFrom, p._id))}
                 />
                 <span className="truncate">{p.name}</span>
@@ -197,8 +247,12 @@ function NewTournament({
           className="btn btn-primary px-4"
           disabled={busy || preview === undefined || preview.participantCount < 2}
           onClick={() => {
-            setBusy(true);
             setError(null);
+            if (offline) {
+              startOffline();
+              return;
+            }
+            setBusy(true);
             create({ tagIds, importFrom, name: name || undefined })
               .then((id) => navigate(`/tournaments/${id}`))
               .catch((e) => setError(errorMessage(e)))

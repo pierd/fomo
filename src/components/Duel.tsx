@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Clock, Equal, Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Result } from "../../convex/lib/ranking";
@@ -16,21 +16,27 @@ type Contestant = Parameters<typeof Cover>[0]["item"] & {
 export function Duel({
   a,
   b,
-  pending,
-  error,
-  onAnswer,
+  onAnswer: give,
   onUndo,
 }: {
   a: Contestant;
   b: Contestant;
-  pending: boolean;
-  error: string | null;
   onAnswer: (result: Result) => void;
   onUndo?: () => void;
 }) {
   const { t } = useTranslation();
+  // Answers count at once: the second half of a double click would land on
+  // the next pair.
+  const answeredAt = useRef(0);
+  const onAnswer = (result: Result) => {
+    const now = performance.now();
+    if (now - answeredAt.current < 250) return;
+    answeredAt.current = now;
+    give(result);
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowLeft") onAnswer("a");
       else if (e.key === "ArrowRight") onAnswer("b");
@@ -46,27 +52,26 @@ export function Duel({
     <>
       <p className="text-center text-sm text-muted">{t("play.question")}</p>
       <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 sm:gap-4">
-        <Contender item={a} onPick={() => onAnswer("a")} disabled={pending} hint="←" />
+        <Contender item={a} onPick={() => onAnswer("a")} hint="←" />
         <div className="flex flex-col items-center justify-center">
           <button
             className="btn h-12 w-12 rounded-full p-0"
             onClick={() => onAnswer("draw")}
-            disabled={pending}
+           
             title={t("play.drawHint")}
             aria-label={t("play.draw")}
           >
             <Equal size={20} />
           </button>
         </div>
-        <Contender item={b} onPick={() => onAnswer("b")} disabled={pending} hint="→" />
+        <Contender item={b} onPick={() => onAnswer("b")} hint="→" />
       </div>
       <div className="flex items-center justify-center gap-3 text-xs text-muted">
-        <button className="btn btn-ghost text-xs" onClick={onUndo} disabled={!onUndo || pending}>
+        <button className="btn btn-ghost text-xs" onClick={onUndo} disabled={!onUndo}>
           <Undo2 size={14} /> {t("play.undo")}
         </button>
         <span className="hidden sm:inline">{t("play.keys")}</span>
       </div>
-      {error && <p className="text-center text-sm text-red-600">{error}</p>}
     </>
   );
 }
@@ -74,19 +79,16 @@ export function Duel({
 function Contender({
   item,
   onPick,
-  disabled,
   hint,
 }: {
   item: Contestant;
   onPick: () => void;
-  disabled: boolean;
   hint: string;
 }) {
   return (
     <button
-      className="card group flex flex-col items-center gap-3 p-3 text-center transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md disabled:opacity-60 sm:p-5"
+      className="card group flex flex-col items-center gap-3 p-3 text-center transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md sm:p-5"
       onClick={onPick}
-      disabled={disabled}
     >
       <Cover item={item} className="aspect-[2/3] w-full max-w-40" />
       <div>

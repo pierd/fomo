@@ -1,19 +1,18 @@
 import { useMemo, useState } from "react";
-import { useMutation } from "convex/react";
 import { ArrowLeft, RotateCcw, Search, Undo2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { confirmedTop, nextPlacement, nextSharpening, SHARPEN_TOP } from "../../convex/lib/globalRanking";
 import { buildRanking, type Comparison, type Result } from "../../convex/lib/ranking";
 import type { Item, Ranked, Tag } from "../lib/types";
-import { errorMessage } from "../lib/format";
+import { useOffline } from "../lib/offline/context";
+import { newId } from "../lib/offline/outbox";
 import { usePersistentState } from "../lib/usePersistentState";
 import { Cover } from "../components/Cover";
 import { Duel } from "../components/Duel";
 
 type ItemId = Id<"items">;
-type SessionDuel = Comparison<ItemId> & { id: Id<"duels"> };
+type SessionDuel = Comparison<ItemId> & { id: string };
 
 // Improving the ranking: `#/rank` sharpens its top, `#/rank/<item>` finds one
 // item's place. Both stay among the items with the tags selected in the list.
@@ -79,40 +78,24 @@ export function RankPage({
   );
 }
 
-// The answers given on this visit, and giving and undoing them. A mutation's
-// promise settles after its effect has reached the queries, so once `pending`
-// clears the ranking is up to date.
+// The answers given on this visit, and giving and undoing them. They take
+// effect at once and are synced in the background.
 function useSession() {
-  const record = useMutation(api.duels.record);
-  const remove = useMutation(api.duels.remove);
+  const { outbox } = useOffline();
   const [session, setSession] = useState<SessionDuel[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const run = async (action: () => Promise<void>) => {
-    if (pending) return;
-    setPending(true);
-    setError(null);
-    try {
-      await action();
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-    setPending(false);
+  const answer = (a: ItemId, b: ItemId, result: Result) => {
+    const id = newId();
+    outbox.add({ kind: "duel", clientId: id, a, b, result, at: Date.now() });
+    setSession((s) => [...s, { id, a, b, result }]);
   };
-  const answer = (a: ItemId, b: ItemId, result: Result) =>
-    run(async () => {
-      const id = await record({ a, b, result });
-      setSession((s) => [...s, { id, a, b, result }]);
-    });
   const last = session.at(-1);
   const undo =
     last &&
-    (() =>
-      run(async () => {
-        await remove({ duelId: last.id });
-        setSession((s) => s.slice(0, -1));
-      }));
-  return { session, pending, error, answer, undo };
+    (() => {
+      outbox.add({ kind: "undoDuel", clientId: newId(), target: last.id });
+      setSession((s) => s.slice(0, -1));
+    });
+  return { session, answer, undo };
 }
 
 function Progress({ value, left, right }: { value: number; left: string; right: string }) {
@@ -136,7 +119,7 @@ const byNewest = (items: Item[]) => [...items].sort((a, b) => b.addedAt - a.adde
 
 function Sharpen({ pool, ranking }: { pool: Item[]; ranking: Ranked }) {
   const { t } = useTranslation();
-  const { session, pending, error, answer, undo } = useSession();
+  const { session, answer, undo } = useSession();
   const sorted = ranking.sort(byNewest(pool), (i) => i._id);
   const ids = sorted.map((i) => i._id);
   const byId = new Map(pool.map((i) => [i._id, i]));
@@ -155,20 +138,17 @@ function Sharpen({ pool, ranking }: { pool: Item[]; ranking: Ranked }) {
           <Duel
             a={byId.get(pair[0])!}
             b={byId.get(pair[1])!}
-            pending={pending}
-            error={error}
-            onAnswer={(result) => void answer(pair[0], pair[1], result)}
+            onAnswer={(result) => answer(pair[0], pair[1], result)}
             onUndo={undo}
           />
         ) : (
           <>
             <p>{t("rank.allConfirmed")}</p>
             {undo && (
-              <button className="btn btn-ghost text-xs" onClick={() => void undo()} disabled={pending}>
+              <button className="btn btn-ghost text-xs" onClick={() => undo()}>
                 <Undo2 size={14} /> {t("results.undoLast")}
               </button>
             )}
-            {error && <p className="text-sm text-red-600">{error}</p>}
           </>
         )}
       </div>
@@ -182,7 +162,7 @@ function Sharpen({ pool, ranking }: { pool: Item[]; ranking: Ranked }) {
 
 function Place({ focus, pool, ranking }: { focus: Item; pool: Item[]; ranking: Ranked }) {
   const { t } = useTranslation();
-  const { session, pending, error, answer, undo } = useSession();
+  const { session, answer, undo } = useSession();
 
   // The list being searched, fixed while searching. Unranked items all share
   // one spot and say little about a place, so they only step in when there's
@@ -220,9 +200,7 @@ function Place({ focus, pool, ranking }: { focus: Item; pool: Item[]; ranking: R
         <Duel
           a={focus}
           b={byId.get(opponent)!}
-          pending={pending}
-          error={error}
-          onAnswer={(result) => void answer(focus._id, opponent, result)}
+          onAnswer={(result) => answer(focus._id, opponent, result)}
           onUndo={undoHere}
         />
       </div>
@@ -243,7 +221,7 @@ function Place({ focus, pool, ranking }: { focus: Item; pool: Item[]; ranking: R
       <Places items={sorted.slice(Math.max(0, at - 2), at + 3)} ranks={ranks} highlight={focus._id} />
       <div className="flex flex-wrap gap-2">
         {undoHere && (
-          <button className="btn btn-ghost" onClick={() => void undoHere()} disabled={pending}>
+          <button className="btn btn-ghost" onClick={() => undoHere()}>
             <Undo2 size={14} /> {t("results.undoLast")}
           </button>
         )}
@@ -256,7 +234,6 @@ function Place({ focus, pool, ranking }: { focus: Item; pool: Item[]; ranking: R
           <RotateCcw size={14} /> {t("rank.again")}
         </button>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }

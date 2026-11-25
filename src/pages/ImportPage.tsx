@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { ArrowLeft, Check, ChevronDown, ChevronUp, ExternalLink, FileUp, Loader2, Lock, Sparkles, Undo2, X } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import { useOnlineMutation } from "../lib/offline/context";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { parseDuration } from "../../convex/lib/duration";
@@ -285,7 +286,7 @@ function Review({
   const [estimate, setEstimate] = useState(aiEnabled);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const commit = useMutation(api.imports.commit);
+  const commit = useOnlineMutation(api.imports.commit);
 
   const existingTags = useMemo(() => tags.map((t) => t.name), [tags]);
   const kept = rows.filter((r) => !r.discarded);

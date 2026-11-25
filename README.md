@@ -39,6 +39,17 @@ next. Live at https://fomo.lessismore.studio.
   `/mcp/t/<token>`. Only SHA-256 hashes are stored (`convex/apiTokens.ts`);
   every call runs as the token's owner.
 
+- Offline (`src/lib/offline/`): an installable PWA (`vite-plugin-pwa`, app
+  shell precached, covers cached as they're seen). The last query results are
+  kept per account in IndexedDB; tournament and ranking answers (and starting
+  a tournament) go through an outbox in localStorage, online too, and are sent
+  in batches to `sync.push`, which is idempotent and skips what no longer
+  applies. `overlay.ts` shows waiting changes with the same rules as
+  `convex/sync.ts`: **change both together**. Everything else needs a
+  connection (`useOnlineMutation`). Raise `VERSION` in `cache.ts` when the
+  shape of a cached query changes. The service worker is off in `npm run dev`;
+  use `npm run build && npm run preview`.
+
 ## Develop
 
 ```sh

@@ -84,7 +84,12 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     // Final standing, best first (ties share a rank).
     standings: v.optional(v.array(v.object({ itemId: v.id("items"), rank: v.number() }))),
-  }).index("by_userId", ["userId"]),
+    // Made on the device, possibly offline (convex/sync.ts): recognizes a
+    // change that is sent again. Same in duels and comparisons.
+    clientId: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_clientId", ["userId", "clientId"]),
 
   // Answers given outside tournaments, to improve the global ranking.
   duels: defineTable({
@@ -92,7 +97,12 @@ export default defineSchema({
     a: v.id("items"),
     b: v.id("items"),
     result: resultValidator,
-  }).index("by_userId", ["userId"]),
+    clientId: v.optional(v.string()),
+    // When it was given, if synced later than that.
+    answeredAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_clientId", ["userId", "clientId"]),
 
   // Personal tokens for the MCP server (/mcp). Only a SHA-256 hash is kept.
   apiTokens: defineTable({
@@ -112,5 +122,7 @@ export default defineSchema({
     b: v.id("items"),
     result: resultValidator,
     imported: v.boolean(),
+    clientId: v.optional(v.string()),
+    answeredAt: v.optional(v.number()),
   }).index("by_tournamentId", ["tournamentId"]),
 });

@@ -3,11 +3,10 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireUserId } from "./lib/auth";
-import { buildRanking, mergeImported, type Comparison } from "./lib/ranking";
+import { buildRanking, MAX_PARTICIPANTS, mergeImported, type Comparison } from "./lib/ranking";
 import { resultValidator } from "./schema";
 import { fail } from "./lib/errors";
 
-const MAX_PARTICIPANTS = 1000;
 const MAX_COMPARISONS = 20000;
 
 async function requireOwnTournament(ctx: QueryCtx, tournamentId: Id<"tournaments">) {
@@ -17,7 +16,7 @@ async function requireOwnTournament(ctx: QueryCtx, tournamentId: Id<"tournaments
   return t;
 }
 
-async function comparisonsOf(ctx: QueryCtx, tournamentId: Id<"tournaments">) {
+export async function comparisonsOf(ctx: QueryCtx, tournamentId: Id<"tournaments">) {
   return await ctx.db
     .query("comparisons")
     .withIndex("by_tournamentId", (q) => q.eq("tournamentId", tournamentId))
@@ -68,6 +67,7 @@ export const list = query({
           participantCount: t.participantIds.length,
           tagIds: t.tagIds,
           top,
+          clientId: t.clientId,
         };
       }),
     );
@@ -97,7 +97,14 @@ export const get = query({
     return {
       tournament: t,
       items: items.filter((i) => i !== null),
-      comparisons: comparisons.map((c) => ({ _id: c._id, a: c.a, b: c.b, result: c.result, imported: c.imported })),
+      comparisons: comparisons.map((c) => ({
+        _id: c._id,
+        a: c.a,
+        b: c.b,
+        result: c.result,
+        imported: c.imported,
+        clientId: c.clientId,
+      })),
     };
   },
 });
@@ -123,42 +130,56 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const participants = await participantsFor(ctx, userId, args.tagIds);
-    if (participants.length < 2) fail("needTwoItems");
-    if (participants.length > MAX_PARTICIPANTS) {
-      fail("tooManyItems", { count: participants.length, max: MAX_PARTICIPANTS });
-    }
-    const ids = participants.map((p) => p._id);
-    const { accepted, conflicts } = await importedFrom(ctx, userId, args.importFrom, ids);
     const tagNames = await Promise.all(args.tagIds.map(async (id) => (await ctx.db.get("tags", id))?.name));
     const name =
       args.name?.trim() ||
       `${tagNames.filter(Boolean).join(" + ") || "Everything"} · ${new Date().toISOString().slice(0, 10)}`;
-    const tournamentId = await ctx.db.insert("tournaments", {
-      userId,
-      name,
-      tagIds: args.tagIds,
-      participantIds: ids,
-      importedFrom: args.importFrom,
-      importedCount: accepted.length,
-      conflictCount: conflicts,
-      status: "active",
-    });
-    for (const c of accepted) {
-      await ctx.db.insert("comparisons", { tournamentId, a: c.a, b: c.b, result: c.result, imported: true });
-    }
-    await finishIfDone(ctx, (await ctx.db.get("tournaments", tournamentId))!, ids, accepted);
-    return tournamentId;
+    return await insertTournament(ctx, userId, { ...args, name, participantIds: participants.map((p) => p._id) });
   },
 });
 
+// Shared with syncing (convex/sync.ts). The caller checks whose items they are.
+export async function insertTournament(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  args: {
+    name: string;
+    tagIds: Id<"tags">[];
+    importFrom: Id<"tournaments">[];
+    participantIds: Id<"items">[];
+    clientId?: string;
+  },
+) {
+  const ids = args.participantIds;
+  if (ids.length < 2) fail("needTwoItems");
+  if (ids.length > MAX_PARTICIPANTS) fail("tooManyItems", { count: ids.length, max: MAX_PARTICIPANTS });
+  const { accepted, conflicts } = await importedFrom(ctx, userId, args.importFrom, ids);
+  const tournamentId = await ctx.db.insert("tournaments", {
+    userId,
+    name: args.name,
+    tagIds: args.tagIds,
+    participantIds: ids,
+    importedFrom: args.importFrom,
+    importedCount: accepted.length,
+    conflictCount: conflicts,
+    status: "active",
+    clientId: args.clientId,
+  });
+  for (const c of accepted) {
+    await ctx.db.insert("comparisons", { tournamentId, a: c.a, b: c.b, result: c.result, imported: true });
+  }
+  await finishIfDone(ctx, (await ctx.db.get("tournaments", tournamentId))!, ids, accepted);
+  return tournamentId;
+}
+
 // Participants that still exist (items can be hard-deleted mid-tournament).
-async function liveParticipants(ctx: QueryCtx, t: Doc<"tournaments">) {
+export async function liveParticipants(ctx: QueryCtx, t: Doc<"tournaments">) {
   const exists = await Promise.all(t.participantIds.map(async (id) => (await ctx.db.get("items", id)) !== null));
   return t.participantIds.filter((_, i) => exists[i]);
 }
 
 // Takes what the caller has already read: both lists can be long.
-async function finishIfDone(
+export async function finishIfDone(
   ctx: MutationCtx,
   t: Doc<"tournaments">,
   participants: Id<"items">[],

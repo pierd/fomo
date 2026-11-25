@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Trash2, Trophy, Undo2 } from "lucide-react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../convex/_generated/api";
@@ -7,6 +6,10 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { buildBracket, buildRanking, hashString, type Bracket, type Result } from "../../convex/lib/ranking";
 import { useTranslation } from "react-i18next";
 import { errorMessage, formatDate } from "../lib/format";
+import type { Item } from "../lib/types";
+import { useCachedQuery, useOffline, useOnlineMutation, useOutbox } from "../lib/offline/context";
+import { isLocalId, newId, type CreateOp } from "../lib/offline/outbox";
+import { localTournament, playTournament } from "../lib/offline/overlay";
 import { navigate } from "../lib/router";
 import { Cover } from "../components/Cover";
 import { Duel } from "../components/Duel";
@@ -15,20 +18,32 @@ type Data = NonNullable<FunctionReturnType<typeof api.tournaments.get>>;
 type TItem = Data["items"][number];
 type ItemId = Id<"items">;
 
-export function TournamentPage({ tournamentId }: { tournamentId: Id<"tournaments"> }) {
+export function TournamentPage({ tournamentId, items }: { tournamentId: string; items: Item[] }) {
   const { t } = useTranslation();
-  const data = useQuery(api.tournaments.get, { tournamentId });
-  if (data === undefined) return <p className="text-muted">{t("common.loading")}</p>;
-  return <TournamentView data={data} />;
+  const { offline } = useOffline();
+  const { ops, aliases } = useOutbox();
+  // Made on this device: first known by an id of its own.
+  const id = aliases[tournamentId] ?? tournamentId;
+  const create = ops.find((op): op is CreateOp => op.kind === "create" && op.clientId === id);
+  const saved = useCachedQuery(
+    api.tournaments.get,
+    isLocalId(id) ? "skip" : { tournamentId: id as Id<"tournaments"> },
+  );
+  const base = useMemo(() => (create ? localTournament(create, items) : saved), [create, items, saved]);
+  const data = useMemo(() => base && playTournament(base, ops, id), [base, ops, id]);
+  if (data) return <TournamentView data={data} unsynced={create !== undefined} />;
+  return (
+    <p className="text-muted">
+      {isLocalId(id) ? t("errors.notFound") : offline ? t("offline.notSaved") : t("common.loading")}
+    </p>
+  );
 }
 
-function TournamentView({ data }: { data: Data }) {
+function TournamentView({ data, unsynced }: { data: Data; unsynced: boolean }) {
   const { t } = useTranslation();
   const { tournament, items, comparisons } = data;
-  const record = useMutation(api.tournaments.record);
-  const undo = useMutation(api.tournaments.undo);
-  const remove = useMutation(api.tournaments.remove);
-  const [pendingAt, setPendingAt] = useState<number | null>(null);
+  const { outbox, offline } = useOffline();
+  const remove = useOnlineMutation(api.tournaments.remove);
   const [error, setError] = useState<string | null>(null);
 
   const byId = useMemo(() => new Map(items.map((i) => [i._id, i])), [items]);
@@ -42,25 +57,29 @@ function TournamentView({ data }: { data: Data }) {
     [ranking, tournament._id, comparisons.length],
   );
   const progress = ranking.progress();
-  // Waiting for the server to confirm the last answer.
-  const pending = pendingAt !== null && pendingAt === comparisons.length;
 
+  // Answers take effect at once and are synced in the background.
   const answer = (result: Result) => {
-    if (!pair || pending) return;
-    setPendingAt(comparisons.length);
-    setError(null);
-    record({ tournamentId: tournament._id, a: pair[0], b: pair[1], result }).catch((e) => {
-      setPendingAt(null);
-      setError(errorMessage(e));
+    if (!pair) return;
+    outbox.add({
+      kind: "answer",
+      clientId: newId(),
+      tournament: tournament._id,
+      a: pair[0],
+      b: pair[1],
+      result,
+      at: Date.now(),
     });
   };
-  const canUndo = asked > 0;
+  const last = comparisons.at(-1);
+  const canUndo = last !== undefined && !last.imported;
   const doUndo = () => {
-    if (!canUndo || pending) return;
-    setPendingAt(comparisons.length);
-    undo({ tournamentId: tournament._id }).catch((e) => {
-      setPendingAt(null);
-      setError(errorMessage(e));
+    if (!canUndo) return;
+    outbox.add({
+      kind: "undo",
+      clientId: newId(),
+      tournament: tournament._id,
+      target: last.clientId ?? last._id,
     });
   };
 
@@ -101,8 +120,6 @@ function TournamentView({ data }: { data: Data }) {
           <Duel
             a={byId.get(pair[0])!}
             b={byId.get(pair[1])!}
-            pending={pending}
-            error={error}
             onAnswer={answer}
             onUndo={canUndo ? doUndo : undefined}
           />
@@ -114,14 +131,18 @@ function TournamentView({ data }: { data: Data }) {
       <div className="border-t border-line pt-4">
         <button
           className="btn btn-ghost text-sm text-red-600"
+          disabled={offline || unsynced}
           onClick={() => {
             if (confirm(t("tournaments.confirmDelete", { name: tournament.name }))) {
-              void remove({ tournamentId: tournament._id }).then(() => navigate("/tournaments"));
+              remove({ tournamentId: tournament._id })
+                .then(() => navigate("/tournaments"))
+                .catch((e) => setError(errorMessage(e)));
             }
           }}
         >
           <Trash2 size={14} /> {t("tournaments.delete")}
         </button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </div>
   );

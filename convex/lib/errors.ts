@@ -14,6 +14,8 @@ export type ErrorCode =
   | "notesTooLong"
   | "tagExists"
   | "tournamentOver"
+  // Only made by the app itself.
+  | "offline"
   | "noSuchAccount"
   | "tooManyTokens"
   | "steamNotConfigured"

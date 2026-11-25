@@ -1,12 +1,13 @@
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useOnlineMutation } from "../lib/offline/context";
 import { useTranslation } from "react-i18next";
 import { formatDate } from "../lib/format";
 
 export function AdminPage() {
   const { t } = useTranslation();
   const users = useQuery(api.admin.listUsers);
-  const setAi = useMutation(api.admin.setAiEnabled);
+  const setAi = useOnlineMutation(api.admin.setAiEnabled);
   if (users === undefined) return <p className="text-muted">{t("common.loading")}</p>;
   return (
     <div className="space-y-4">

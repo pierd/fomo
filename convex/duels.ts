@@ -11,6 +11,9 @@ import { fail } from "./lib/errors";
 // Convex returns arrays of at most 8192; beyond that the oldest are left out.
 const MAX_ANSWERS = 8000;
 
+// With the id the device gave it, to match it with changes not synced yet.
+type PoolAnswer = Answer<Id<"items">> & { clientId?: string };
+
 export const answers = query({
   args: {},
   handler: async (ctx) => {
@@ -20,14 +23,20 @@ export const answers = query({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
       .take(MAX_ANSWERS);
-    const out: Answer<Id<"items">>[] = duels.map((d) => ({ a: d.a, b: d.b, result: d.result, at: d._creationTime }));
+    const out: PoolAnswer[] = duels.map((d) => ({
+      a: d.a,
+      b: d.b,
+      result: d.result,
+      at: d.answeredAt ?? d._creationTime,
+      clientId: d.clientId,
+    }));
 
     const tournaments = await ctx.db
       .query("tournaments")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
       .take(200);
-    const copies: Answer<Id<"items">>[] = [];
+    const copies: PoolAnswer[] = [];
     let budget = MAX_ANSWERS;
     for (const t of tournaments) {
       if (budget <= 0) break;
@@ -41,7 +50,8 @@ export const answers = query({
         // An imported result is a copy of an earlier answer: never newer than
         // an original, and only needed if its tournament has been deleted.
         if (c.imported) copies.push({ a: c.a, b: c.b, result: c.result, at: 0 });
-        else out.push({ a: c.a, b: c.b, result: c.result, at: c._creationTime });
+        else
+          out.push({ a: c.a, b: c.b, result: c.result, at: c.answeredAt ?? c._creationTime, clientId: c.clientId });
       }
     }
     const pairOf = (c: { a: string; b: string }) => (c.a < c.b ? `${c.a}|${c.b}` : `${c.b}|${c.a}`);

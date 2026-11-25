@@ -1,7 +1,7 @@
-import { useMutation } from "convex/react";
 import { Check, Clock, ExternalLink, ListOrdered, Loader2, Pencil, RotateCcw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
+import { useOnlineMutation, useOffline } from "../lib/offline/context";
 import type { Item } from "../lib/types";
 import { formatDate, formatMinutes } from "../lib/format";
 import { Cover } from "./Cover";
@@ -28,7 +28,8 @@ export function ItemCard({
   unranked: boolean;
 }) {
   const { t } = useTranslation();
-  const setStatus = useMutation(api.items.setStatus);
+  const { offline } = useOffline();
+  const setStatus = useOnlineMutation(api.items.setStatus);
   return (
     <li className="group card flex gap-3 p-3">
       <button onClick={onEdit} className="shrink-0" aria-label={t("item.editNamed", { title: item.title })}>
@@ -58,6 +59,7 @@ export function ItemCard({
                 <button
                   className="btn btn-ghost p-1.5"
                   title={t("item.markDone")}
+                  disabled={offline}
                   onClick={() => void setStatus({ itemId: item._id, status: "done" })}
                 >
                   <Check size={16} />
@@ -65,6 +67,7 @@ export function ItemCard({
                 <button
                   className="btn btn-ghost p-1.5"
                   title={t("item.discard")}
+                  disabled={offline}
                   onClick={() => void setStatus({ itemId: item._id, status: "discarded" })}
                 >
                   <X size={16} />
@@ -74,6 +77,7 @@ export function ItemCard({
               <button
                 className="btn btn-ghost p-1.5"
                 title={t("item.backToList")}
+                disabled={offline}
                 onClick={() => void setStatus({ itemId: item._id, status: "active" })}
               >
                 <RotateCcw size={16} />

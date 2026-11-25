@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { Check, Copy, KeyRound, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../convex/_generated/api";
+import { useOnlineMutation } from "../lib/offline/context";
 import type { Id } from "../../convex/_generated/dataModel";
 import { errorMessage, formatDate } from "../lib/format";
 import { usePersistentState } from "../lib/usePersistentState";
@@ -187,7 +188,7 @@ function Numbered({ n, children }: { n: number; children: React.ReactNode }) {
 function TokenList() {
   const { t } = useTranslation();
   const tokens = useQuery(api.apiTokens.list);
-  const revoke = useMutation(api.apiTokens.revoke);
+  const revoke = useOnlineMutation(api.apiTokens.revoke);
   const [error, setError] = useState<string | null>(null);
   if (tokens === undefined || tokens.length === 0) return null;
 

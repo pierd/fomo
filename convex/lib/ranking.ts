@@ -14,6 +14,8 @@ export type Relation = "above" | "below" | "equal" | "unknown";
 // How many items the final standing fully orders.
 export const TOP_K = 4;
 
+export const MAX_PARTICIPANTS = 1000;
+
 export class Ranking<Id extends string = string> {
   readonly ids: Id[];
   private index = new Map<Id, number>();

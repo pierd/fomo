@@ -55,7 +55,8 @@
     "steamNoProfile": "There's no Steam profile with that name.",
     "steamPrivate": "Steam won't show this library. Make “Game details” public and try again.",
     "steamUnavailable": "Steam isn't answering. Try again later.",
-    "steamWishlistUnavailable": "Couldn't load the wishlist. Try again, or untick it to import only your library."
+    "steamWishlistUnavailable": "Couldn't load the wishlist. Try again, or untick it to import only your library.",
+    "offline": "You're offline. This needs a connection."
   },
   "status": {
     "active": "To do",
@@ -485,5 +486,22 @@
     "tooFew": "There's nothing to compare it with here.",
     "left_one": "at most {{count}} question left",
     "left_other": "at most {{count}} questions left"
+  },
+  "offline": {
+    "banner": "You're offline. Tournaments and ranking answers are saved and will sync; other changes need a connection.",
+    "notSaved": "This isn't saved on this device. Connect to open it.",
+    "nothingSaved": "Nothing is saved on this device yet. Connect to load your list.",
+    "retry": "Retry",
+    "update": "A new version is ready.",
+    "later": "Later",
+    "reload": "Reload",
+    "waiting_one": "{{count}} change waiting.",
+    "waiting_other": "{{count}} changes waiting.",
+    "syncFailed_one": "Couldn't sync {{count}} change. It's still saved here.",
+    "syncFailed_other": "Couldn't sync {{count}} changes. They're still saved here.",
+    "skipped_one": "{{count}} synced change no longer applied (an item or tournament was deleted, or you answered differently elsewhere).",
+    "skipped_other": "{{count}} synced changes no longer applied (items or tournaments were deleted, or you answered differently elsewhere).",
+    "confirmSignOut_one": "{{count}} change hasn't synced and will be lost. Sign out anyway?",
+    "confirmSignOut_other": "{{count}} changes haven't synced and will be lost. Sign out anyway?"
   }
 }

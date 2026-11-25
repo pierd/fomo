@@ -18,6 +18,7 @@ import type * as http from "../http.js";
 import type * as imports from "../imports.js";
 import type * as items from "../items.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_batch from "../lib/batch.js";
 import type * as lib_covers from "../lib/covers.js";
 import type * as lib_duration from "../lib/duration.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -29,6 +30,7 @@ import type * as lib_steam from "../lib/steam.js";
 import type * as lib_tags from "../lib/tags.js";
 import type * as mcp from "../mcp.js";
 import type * as steam from "../steam.js";
+import type * as sync from "../sync.js";
 import type * as tags from "../tags.js";
 import type * as tournaments from "../tournaments.js";
 
@@ -49,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   imports: typeof imports;
   items: typeof items;
   "lib/auth": typeof lib_auth;
+  "lib/batch": typeof lib_batch;
   "lib/covers": typeof lib_covers;
   "lib/duration": typeof lib_duration;
   "lib/errors": typeof lib_errors;
@@ -60,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/tags": typeof lib_tags;
   mcp: typeof mcp;
   steam: typeof steam;
+  sync: typeof sync;
   tags: typeof tags;
   tournaments: typeof tournaments;
 }>;

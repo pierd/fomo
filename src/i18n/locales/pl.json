@@ -55,7 +55,8 @@
     "steamNoProfile": "Nie ma profilu Steam o tej nazwie.",
     "steamPrivate": "Steam nie udostępnia tej biblioteki. Ustaw „Szczegóły gier” jako publiczne i spróbuj ponownie.",
     "steamUnavailable": "Steam nie odpowiada. Spróbuj później.",
-    "steamWishlistUnavailable": "Nie udało się wczytać listy życzeń. Spróbuj ponownie albo odznacz ją, żeby zaimportować tylko bibliotekę."
+    "steamWishlistUnavailable": "Nie udało się wczytać listy życzeń. Spróbuj ponownie albo odznacz ją, żeby zaimportować tylko bibliotekę.",
+    "offline": "Jesteś offline. To wymaga połączenia."
   },
   "status": {
     "active": "Do zrobienia",
@@ -539,5 +540,30 @@
     "left_few": "zostały najwyżej {{count}} pytania",
     "left_many": "zostało najwyżej {{count}} pytań",
     "left_other": "zostało najwyżej {{count}} pytania"
+  },
+  "offline": {
+    "banner": "Jesteś offline. Turnieje i odpowiedzi do rankingu są zapisywane i zostaną zsynchronizowane; inne zmiany wymagają połączenia.",
+    "notSaved": "Tego nie ma zapisanego na tym urządzeniu. Połącz się, żeby to otworzyć.",
+    "nothingSaved": "Na tym urządzeniu nic jeszcze nie zapisano. Połącz się, żeby wczytać listę.",
+    "retry": "Ponów",
+    "update": "Dostępna jest nowa wersja.",
+    "later": "Później",
+    "reload": "Odśwież",
+    "waiting_one": "Oczekuje: {{count}} zmiana.",
+    "waiting_few": "Oczekuje: {{count}} zmiany.",
+    "waiting_many": "Oczekuje: {{count}} zmian.",
+    "waiting_other": "Oczekuje: {{count}} zmiany.",
+    "syncFailed_one": "Nie udało się zsynchronizować {{count}} zmiany. Nadal jest tu zapisana.",
+    "syncFailed_few": "Nie udało się zsynchronizować {{count}} zmian. Nadal są tu zapisane.",
+    "syncFailed_many": "Nie udało się zsynchronizować {{count}} zmian. Nadal są tu zapisane.",
+    "syncFailed_other": "Nie udało się zsynchronizować {{count}} zmiany. Nadal są tu zapisane.",
+    "skipped_one": "Zsynchronizowane zmiany, które już nie obowiązują: {{count}} (usunięto pozycje lub turnieje albo odpowiedziano inaczej gdzie indziej).",
+    "skipped_few": "Zsynchronizowane zmiany, które już nie obowiązują: {{count}} (usunięto pozycje lub turnieje albo odpowiedziano inaczej gdzie indziej).",
+    "skipped_many": "Zsynchronizowane zmiany, które już nie obowiązują: {{count}} (usunięto pozycje lub turnieje albo odpowiedziano inaczej gdzie indziej).",
+    "skipped_other": "Zsynchronizowane zmiany, które już nie obowiązują: {{count}} (usunięto pozycje lub turnieje albo odpowiedziano inaczej gdzie indziej).",
+    "confirmSignOut_one": "Niezsynchronizowane zmiany, które przepadną: {{count}}. Wylogować mimo to?",
+    "confirmSignOut_few": "Niezsynchronizowane zmiany, które przepadną: {{count}}. Wylogować mimo to?",
+    "confirmSignOut_many": "Niezsynchronizowane zmiany, które przepadną: {{count}}. Wylogować mimo to?",
+    "confirmSignOut_other": "Niezsynchronizowane zmiany, które przepadną: {{count}}. Wylogować mimo to?"
   }
 }

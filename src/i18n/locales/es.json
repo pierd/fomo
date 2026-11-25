@@ -55,7 +55,8 @@
     "steamNoProfile": "No hay ningún perfil de Steam con ese nombre.",
     "steamPrivate": "Steam no muestra esta biblioteca. Haz públicos los «Detalles de los juegos» e inténtalo de nuevo.",
     "steamUnavailable": "Steam no responde. Inténtalo más tarde.",
-    "steamWishlistUnavailable": "No se pudo cargar la lista de deseados. Inténtalo de nuevo o desmárcala para importar solo tu biblioteca."
+    "steamWishlistUnavailable": "No se pudo cargar la lista de deseados. Inténtalo de nuevo o desmárcala para importar solo tu biblioteca.",
+    "offline": "Estás sin conexión. Esto necesita conexión."
   },
   "status": {
     "active": "Pendientes",
@@ -512,5 +513,26 @@
     "left_one": "queda como máximo {{count}} pregunta",
     "left_many": "quedan como máximo {{count}} preguntas",
     "left_other": "quedan como máximo {{count}} preguntas"
+  },
+  "offline": {
+    "banner": "Sin conexión. Los torneos y las respuestas de la clasificación se guardan y se sincronizarán; los demás cambios necesitan conexión.",
+    "notSaved": "Esto no está guardado en este dispositivo. Conéctate para abrirlo.",
+    "nothingSaved": "Aún no hay nada guardado en este dispositivo. Conéctate para cargar tu lista.",
+    "retry": "Reintentar",
+    "update": "Hay una versión nueva.",
+    "later": "Más tarde",
+    "reload": "Recargar",
+    "waiting_one": "{{count}} cambio pendiente.",
+    "waiting_many": "{{count}} de cambios pendientes.",
+    "waiting_other": "{{count}} cambios pendientes.",
+    "syncFailed_one": "No se pudo sincronizar {{count}} cambio. Sigue guardado aquí.",
+    "syncFailed_many": "No se pudieron sincronizar {{count}} de cambios. Siguen guardados aquí.",
+    "syncFailed_other": "No se pudieron sincronizar {{count}} cambios. Siguen guardados aquí.",
+    "skipped_one": "{{count}} cambio sincronizado ya no se aplica (se borró un elemento o torneo, o respondiste otra cosa en otro sitio).",
+    "skipped_many": "{{count}} de cambios sincronizados ya no se aplican (se borraron elementos o torneos, o respondiste otra cosa en otro sitio).",
+    "skipped_other": "{{count}} cambios sincronizados ya no se aplican (se borraron elementos o torneos, o respondiste otra cosa en otro sitio).",
+    "confirmSignOut_one": "{{count}} cambio sin sincronizar se perderá. ¿Cerrar sesión igualmente?",
+    "confirmSignOut_many": "{{count}} de cambios sin sincronizar se perderán. ¿Cerrar sesión igualmente?",
+    "confirmSignOut_other": "{{count}} cambios sin sincronizar se perderán. ¿Cerrar sesión igualmente?"
   }
 }
