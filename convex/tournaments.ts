@@ -146,7 +146,7 @@ export const create = mutation({
     for (const c of accepted) {
       await ctx.db.insert("comparisons", { tournamentId, a: c.a, b: c.b, result: c.result, imported: true });
     }
-    await finishIfDone(ctx, (await ctx.db.get("tournaments", tournamentId))!);
+    await finishIfDone(ctx, (await ctx.db.get("tournaments", tournamentId))!, ids, accepted);
     return tournamentId;
   },
 });
@@ -157,9 +157,14 @@ async function liveParticipants(ctx: QueryCtx, t: Doc<"tournaments">) {
   return t.participantIds.filter((_, i) => exists[i]);
 }
 
-async function finishIfDone(ctx: MutationCtx, t: Doc<"tournaments">) {
-  const comparisons = await comparisonsOf(ctx, t._id);
-  const ranking = buildRanking(await liveParticipants(ctx, t), comparisons);
+// Takes what the caller has already read: both lists can be long.
+async function finishIfDone(
+  ctx: MutationCtx,
+  t: Doc<"tournaments">,
+  participants: Id<"items">[],
+  comparisons: Comparison<Id<"items">>[],
+) {
+  const ranking = buildRanking(participants, comparisons);
   const done = ranking.isFinished();
   if (done && t.status === "active") {
     await ctx.db.patch("tournaments", t._id, {
@@ -184,12 +189,13 @@ export const record = mutation({
     const t = await requireOwnTournament(ctx, tournamentId);
     if (t.status !== "active") fail("tournamentOver");
     const comparisons = await comparisonsOf(ctx, tournamentId);
-    const ranking = buildRanking(await liveParticipants(ctx, t), comparisons);
+    const participants = await liveParticipants(ctx, t);
+    const ranking = buildRanking(participants, comparisons);
     if (!ranking.has(a) || !ranking.has(b) || a === b) fail("notFound");
     // Already decided (e.g. a double click): nothing to record.
     if (ranking.relation(a, b) !== "unknown") return null;
     await ctx.db.insert("comparisons", { tournamentId, a, b, result, imported: false });
-    await finishIfDone(ctx, t);
+    await finishIfDone(ctx, t, participants, [...comparisons, { a, b, result }]);
     return null;
   },
 });
@@ -205,7 +211,7 @@ export const undo = mutation({
       .first();
     if (last === null || last.imported) return null;
     await ctx.db.delete("comparisons", last._id);
-    await finishIfDone(ctx, t);
+    await finishIfDone(ctx, t, await liveParticipants(ctx, t), await comparisonsOf(ctx, tournamentId));
     return null;
   },
 });

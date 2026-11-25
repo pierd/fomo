@@ -18,6 +18,8 @@ async function get(url: string, accept = "*/*") {
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT, Accept: accept },
     redirect: "follow",
+    // One stuck site must not hold up the rest of a batch.
+    signal: AbortSignal.timeout(15_000),
   });
   return res;
 }

@@ -4,6 +4,9 @@ import { z } from "zod";
 import { internalAction, internalQuery } from "./_generated/server";
 import { downloadImage, findCoverUrl } from "./lib/covers";
 import { LANGUAGE_NAMES } from "./lib/locales";
+import type { FunctionReturnType } from "convex/server";
+import type { Id } from "./_generated/dataModel";
+import { runPaced } from "./lib/batch";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -36,6 +39,25 @@ const cleanupSchema = z.object({
   tags: z.array(z.string()).describe("Tags that fit, chosen ONLY from the provided list of existing tags."),
 });
 
+type ItemForAi = NonNullable<FunctionReturnType<typeof internal.items.getInternal>>;
+
+async function askModel(item: ItemForAi, allTags: { name: string }[]) {
+  const { output } = await generateText({
+    model: convexGateway(CLEANUP_MODEL),
+    abortSignal: AbortSignal.timeout(90_000),
+    output: Output.object({ schema: cleanupSchema }),
+    system: `You tidy up entries in a personal list of things to read, watch, play or listen to.
+The user typed a rough name (maybe lowercase, misspelled, partial, or with the author/year mixed in). Identify the work they most likely mean and return clean metadata.
+If you can't tell what the work is, set recognized=false and return the title as given, just with tidy capitalization.
+Estimates are fine for durations; prefer well-known figures.
+The user's language is ${LANGUAGE_NAMES[item.locale]}: use the title under which the work is known in that language.`,
+    prompt: `Entry: ${JSON.stringify(item.title)}${item.creator ? `\nCreator given: ${JSON.stringify(item.creator)}` : ""}
+Tags already on it: ${item.tagNames.join(", ") || "(none)"}${item.description ? `\nNotes: ${JSON.stringify(item.description.slice(0, 500))}` : ""}
+Existing tags to choose from: ${allTags.map((t) => t.name).join(", ")}`,
+  });
+  return output;
+}
+
 export const cleanupItem = internalAction({
   args: { itemId: v.id("items"), full: v.boolean() },
   handler: async (ctx, { itemId, full }) => {
@@ -43,18 +65,7 @@ export const cleanupItem = internalAction({
     if (item === null) return null;
     const allTags: { name: string }[] = await ctx.runQuery(internal.ai.userTags, { userId: item.userId });
     try {
-      const { output } = await generateText({
-        model: convexGateway(CLEANUP_MODEL),
-        output: Output.object({ schema: cleanupSchema }),
-        system: `You tidy up entries in a personal list of things to read, watch, play or listen to.
-The user typed a rough name (maybe lowercase, misspelled, partial, or with the author/year mixed in). Identify the work they most likely mean and return clean metadata.
-If you can't tell what the work is, set recognized=false and return the title as given, just with tidy capitalization.
-Estimates are fine for durations; prefer well-known figures.
-The user's language is ${LANGUAGE_NAMES[item.locale]}: use the title under which the work is known in that language.`,
-        prompt: `Entry: ${JSON.stringify(item.title)}${item.creator ? `\nCreator given: ${JSON.stringify(item.creator)}` : ""}
-Tags already on it: ${item.tagNames.join(", ") || "(none)"}${item.description ? `\nNotes: ${JSON.stringify(item.description.slice(0, 500))}` : ""}
-Existing tags to choose from: ${allTags.map((t) => t.name).join(", ")}`,
-      });
+      const output = await askModel(item, allTags);
       const tags = new Set(allTags.map((t) => t.name));
       await ctx.runMutation(internal.items.applyCleanup, {
         itemId,
@@ -87,6 +98,28 @@ Existing tags to choose from: ${allTags.map((t) => t.name).join(", ")}`,
         error: e instanceof Error ? e.message : String(e),
       });
     }
+    return null;
+  },
+});
+
+// Time estimates for a batch of one user's imported items, saved together.
+export const estimateItems = internalAction({
+  args: { userId: v.id("users"), itemIds: v.array(v.id("items")) },
+  handler: async (ctx, { userId, itemIds }) => {
+    const allTags: { name: string }[] = await ctx.runQuery(internal.ai.userTags, { userId });
+    const results: { itemId: Id<"items">; durationMinutes?: number; pages?: number; error?: string }[] = [];
+    const rest = await runPaced(itemIds, async (itemId) => {
+      try {
+        const item = await ctx.runQuery(internal.items.getInternal, { itemId });
+        if (item === null) return;
+        const { durationMinutes, pages } = await askModel(item, allTags);
+        results.push({ itemId, durationMinutes, pages });
+      } catch (e) {
+        results.push({ itemId, error: e instanceof Error ? e.message : String(e) });
+      }
+    });
+    if (rest.length) await ctx.scheduler.runAfter(0, internal.ai.estimateItems, { userId, itemIds: rest });
+    if (results.length) await ctx.runMutation(internal.items.saveEstimates, { results });
     return null;
   },
 });

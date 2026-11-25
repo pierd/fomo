@@ -1,5 +1,9 @@
 import { action, internalQuery, mutation } from "./_generated/server";
+import type { Infer } from "convex/values";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import type { hintsValidator } from "./covers";
+import { BATCH_SIZE, chunk, ITEM_INTERVAL_MS } from "./lib/batch";
 import { generateText, Output } from "ai";
 import { convexGateway } from "@convex-dev/ai-sdk-provider";
 import { z } from "zod";
@@ -52,7 +56,8 @@ export const commit = mutation({
     const ai = estimateWithAi && (await canUseAi(ctx, userId));
     if (items.length > MAX_BATCH) throw new Error(`At most ${MAX_BATCH} items per batch`);
     const now = Date.now();
-    let delay = startDelayMs ?? 0;
+    const toEstimate: Id<"items">[] = [];
+    const toCover: { itemId: Id<"items">; hints: Infer<typeof hintsValidator> }[] = [];
     for (const it of items) {
       const title = it.title.trim();
       if (!title) continue;
@@ -77,12 +82,9 @@ export const commit = mutation({
         sourceUrl: it.sourceUrl,
         aiStatus: ai && !na && minutes === undefined ? "pending" : undefined,
       });
-      if (ai && !na && minutes === undefined) {
-        await ctx.scheduler.runAfter(delay, internal.ai.cleanupItem, { itemId, full: false });
-      }
+      if (ai && !na && minutes === undefined) toEstimate.push(itemId);
       if (fetchCovers) {
-        // Spread out so source sites aren't hammered.
-        await ctx.scheduler.runAfter(delay, internal.covers.fetchCover, {
+        toCover.push({
           itemId,
           hints: {
             title,
@@ -95,7 +97,14 @@ export const commit = mutation({
           },
         });
       }
-      delay += 1500;
+    }
+    // Each batch starts when the one before it should be about done.
+    const delayOf = (batch: number) => (startDelayMs ?? 0) + batch * BATCH_SIZE * ITEM_INTERVAL_MS;
+    for (const [i, itemIds] of chunk(toEstimate).entries()) {
+      await ctx.scheduler.runAfter(delayOf(i), internal.ai.estimateItems, { userId, itemIds });
+    }
+    for (const [i, jobs] of chunk(toCover).entries()) {
+      await ctx.scheduler.runAfter(delayOf(i), internal.covers.fetchCovers, { jobs });
     }
     return null;
   },

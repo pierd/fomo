@@ -229,6 +229,22 @@ export const getInternal = internalQuery({
   },
 });
 
+// Only fill time to finish when the user didn't give one.
+function estimatePatch(
+  item: Doc<"items">,
+  { durationMinutes, pages }: { durationMinutes?: number; pages?: number },
+): Partial<Doc<"items">> {
+  if (!durationMinutes || item.durationMode === "na") return {};
+  const missing =
+    item.durationMode === "auto" || item.durationMode === "unset" || item.durationMinutes === undefined;
+  if (!missing) return {};
+  return {
+    durationMinutes: Math.round(durationMinutes),
+    durationMode: "minutes",
+    ...(pages ? { pages } : {}),
+  };
+}
+
 export const applyCleanup = internalMutation({
   args: {
     itemId: v.id("items"),
@@ -246,16 +262,7 @@ export const applyCleanup = internalMutation({
     if (args.title) patch.title = args.title;
     if (args.creator) patch.creator = args.creator;
     if (args.year) patch.year = args.year;
-    // Only fill time to finish when the user didn't give one.
-    if (
-      args.durationMinutes &&
-      (item.durationMode === "auto" || item.durationMode === "unset" || item.durationMinutes === undefined) &&
-      item.durationMode !== "na"
-    ) {
-      patch.durationMinutes = Math.round(args.durationMinutes);
-      patch.durationMode = "minutes";
-      if (args.pages) patch.pages = args.pages;
-    }
+    Object.assign(patch, estimatePatch(item, args));
     if (args.addTags.length) {
       const ids = await ensureTags(ctx, item.userId, args.addTags);
       patch.tagIds = [...new Set([...item.tagIds, ...ids])];
@@ -284,6 +291,48 @@ export const storeCover = internalMutation({
       return null;
     }
     await replaceCover(ctx, item, storageId);
+    return null;
+  },
+});
+
+// Covers found for imported items, which start without one: a cover that is
+// there by now was chosen by the user, so it stays.
+export const storeCovers = internalMutation({
+  args: { covers: v.array(v.object({ itemId: v.id("items"), storageId: v.id("_storage") })) },
+  handler: async (ctx, { covers }) => {
+    for (const { itemId, storageId } of covers) {
+      const item = await ctx.db.get("items", itemId);
+      if (item === null || item.coverStorageId) await ctx.storage.delete(storageId);
+      else await ctx.db.patch("items", itemId, { coverStorageId: storageId });
+    }
+    return null;
+  },
+});
+
+// AI time estimates for a batch of imported items.
+export const saveEstimates = internalMutation({
+  args: {
+    results: v.array(
+      v.object({
+        itemId: v.id("items"),
+        durationMinutes: v.optional(v.number()),
+        pages: v.optional(v.number()),
+        error: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, { results }) => {
+    for (const { itemId, error, ...estimate } of results) {
+      const item = await ctx.db.get("items", itemId);
+      if (item === null) continue;
+      await ctx.db.patch(
+        "items",
+        itemId,
+        error !== undefined
+          ? { aiStatus: "failed", aiError: error.slice(0, 500) }
+          : { aiStatus: "done", aiError: undefined, ...estimatePatch(item, estimate) },
+      );
+    }
     return null;
   },
 });
